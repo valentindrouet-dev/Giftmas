@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.18';
+const VERSION = 'v0.19';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -141,6 +141,7 @@ function person(id) {
       <div class="gift-foot"><span class="price">${euro(g.price)}</span>
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
           aria-label="${r ? `Réservé par ${esc(r.reserved_by)}` : `Je réserve ${esc(g.name)}`}"></label>`}</div>
+      ${r ? `<span class="by">${byMe ? 'Moi' : esc(r.reserved_by)}</span>` : ''}
       ${same(g.added_by, D.pseudo) || manage ? `<button type="button" class="del" data-act="del-gift" data-id="${g.id}" aria-label="Supprimer ${esc(g.name)}">${ico('close')}</button>` : ''}
     </article>`;
   });
@@ -230,6 +231,7 @@ function sheet(html, onSubmit) {
     try { await onSubmit(new FormData(form), form); d.close(); } catch (err) { toast(err.message); }
     e.submitter.disabled = false;
   };
+  d.onclick = (e) => { if (e.target === d) d.close(); }; // toucher le voile autour ferme la fenêtre
   d.showModal();
   return form;
 }
@@ -485,7 +487,7 @@ async function enablePush() {
 let toastTimer;
 function toast(msg, [label, fn] = []) {
   const t = $('#toast');
-  t.innerHTML = `<span>${esc(msg)}</span>${label ? `<button type="button">${esc(label)}</button>` : ''}`;
+  t.innerHTML = `<span>${esc(msg)}</span>${label ? `<button type="button" class="btn">${ico('share')} ${esc(label)}</button>` : ''}`;
   if (fn) $('button', t).onclick = () => { t.classList.remove('show'); fn(); };
   t.classList.add('show');
   clearTimeout(toastTimer);
