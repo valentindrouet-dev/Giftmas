@@ -139,5 +139,32 @@ await val.waitForSelector('.phead small:has-text("9 ans")');
 await val.selectOption('[data-sort]', 'added');
 await snap(val, '6-tri-age');
 
+// Sauvegarde : export puis import par quelqu'un d'autre, sur un appareil vierge
+await val.click('[aria-label="Familles et réglages"]');
+const [download] = await Promise.all([val.waitForEvent('download'), val.click('[data-act=export]')]);
+const backup = await download.path();
+const fresh = await browser.newContext({ ...devices['iPhone 13'] });
+await fresh.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = ''; export const VAPID_PUBLIC_KEY = '';" }));
+const imp = await fresh.newPage();
+imp.on('pageerror', (e) => { throw e; });
+await imp.goto(URL);
+await imp.click('#switch');
+await imp.fill('input[name=pseudo]', 'Restaurateur');
+await imp.fill('input[name=family]', 'Vide');
+await imp.click('text=Créer la famille');
+await imp.waitForSelector('[data-import]', { state: 'attached' });
+imp.once('dialog', (d) => d.accept());
+await imp.setInputFiles('[data-import]', backup);
+await imp.waitForSelector('#toast.show >> text=Import terminé');
+await imp.click('[aria-label=Accueil]');
+await imp.click('.person:has-text("Richou")');
+await imp.waitForSelector('.gift[data-name="Astérix chez les Pictes"], .gift[data-name="Livre Astérix"]');
+assert.ok((await imp.$$('.gift')).length >= 8, 'les cadeaux de Richou sont restaurés');
+await imp.click('[aria-label="Familles et réglages"]');
+imp.once('dialog', (d) => d.accept());
+await imp.setInputFiles('[data-import]', backup);
+await imp.waitForSelector('#toast.show >> text=0 famille(s), 0 membre(s), 0 cadeau(x)');
+await fresh.close();
+
 await browser.close();
 console.log('smoke OK');

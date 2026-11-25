@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.21';
+const VERSION = 'v0.22';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -217,6 +217,11 @@ function families() {
     </div>
     <form class="card stack" data-form="join"><label>Rejoindre une autre famille<input name="code" required maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="Code"></label><button class="btn">Rejoindre</button></form>
     <form class="card stack" data-form="create"><label>Créer une nouvelle famille<input name="name" required maxlength="60" placeholder="Famille Martin"></label><button class="btn ghost">Créer</button></form>
+    <div class="card stack"><b>Sauvegarde</b>
+      <small>Toutes tes familles, membres et cadeaux dans un fichier, pour les garder ou les restaurer.</small>
+      <div class="row"><button type="button" class="btn ghost" data-act="export">Exporter</button>
+        <label class="btn ghost">Importer<input type="file" accept="application/json,.json" data-import hidden></label></div>
+    </div>
     <p class="card">Connecté en tant que <b>${esc(D.pseudo)}</b>. <button type="button" class="link" data-act="logout">Se déconnecter</button></p>`;
 }
 
@@ -378,6 +383,47 @@ async function share(text, url = appUrl) {
 
 // ───────── Actions ─────────
 const run = (fn) => fn().then(refresh).catch((e) => toast(e.message));
+
+// ───────── Sauvegarde : export / import JSON ─────────
+async function exportData() {
+  const data = {
+    app: 'giftmas', version: 1, exported_at: new Date().toISOString(), by: D.pseudo,
+    families: D.families.map(({ id, name }) => ({ id, name })), // sans les codes : le fichier ne donne pas accès aux familles
+    profiles: D.profiles, links: D.links, gifts: D.gifts, reservations: D.reservations,
+  };
+  const file = new File([JSON.stringify(data)], `giftmas-${data.exported_at.slice(0, 10)}.json`, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) return navigator.share({ files: [file] }).catch(() => {});
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// Recrée ce qui manque (repéré par identifiant ou par nom, pour pouvoir réimporter sans doublons), sans toucher à l'existant.
+// Limites dues aux règles d'accès : pas de réservations, cadeaux recréés au nom de l'importateur, nouveaux codes famille.
+async function importData(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { throw new Error('Fichier illisible'); }
+  if (data?.app !== 'giftmas' || !['families', 'profiles', 'links', 'gifts'].every((k) => Array.isArray(data[k]))) throw new Error('Ce fichier n’est pas une sauvegarde Giftmas');
+  const fam = {}, prof = {}, n = { f: 0, p: 0, g: 0 };
+  for (const f of data.families) {
+    fam[f.id] = D.families.find((x) => x.id === f.id || same(x.name, f.name))?.id ?? (n.f++, (await api.createFamily(String(f.name).slice(0, 60))).id);
+  }
+  for (const p of data.profiles) {
+    const families = data.links.filter((l) => l.profile_id === p.id).map((l) => fam[l.family_id]).filter(Boolean);
+    const existing = D.profiles.find((x) => x.id === p.id || (same(x.name, p.name) && D.links.some((l) => l.profile_id === x.id && families.includes(l.family_id))));
+    if (existing) { prof[p.id] = existing.id; continue; }
+    if (!families.length) continue;
+    const id = await api.createProfile({ name: p.name, photo: p.photo ?? null, isMe: same(p.owner, D.pseudo), families });
+    if (p.note || p.birth_year) await api.updateProfile({ id, name: p.name, photo: p.photo ?? null, note: p.note ?? '', birthYear: p.birth_year ?? null, families });
+    prof[p.id] = id; n.p++;
+  }
+  for (const g of data.gifts) {
+    if (!prof[g.profile_id] || D.gifts.some((x) => x.id === g.id || (x.profile_id === prof[g.profile_id] && same(x.name, g.name)))) continue;
+    await api.addGift({ profile_id: prof[g.profile_id], name: g.name, price: g.price ?? null, url: g.url ?? null, image: g.image ?? null });
+    n.g++;
+  }
+  return n;
+}
 const actions = {
   filter: (b) => { filter = b.dataset.id; localStorage.setItem('giftmas-filter', filter); render(); },
   'new-profile': () => newProfile(),
@@ -393,6 +439,7 @@ const actions = {
       && !D.links.some((l) => l.profile_id === p.id && l.family_id !== f.id)).map((p) => p.name);
     if (confirm(`Supprimer « ${f.name} » pour tout le monde ?${only.length ? `\n\nSeront aussi supprimés avec leurs listes : ${only.join(', ')}.` : ''}`)) run(() => api.deleteFamily(f.id));
   },
+  export: () => exportData().catch((e) => toast(e.message)),
   'del-notif': (b) => run(() => api.deleteNotif(b.dataset.id)),
   'add-to-family': (b) => ($('#sheet').close(), run(() => api.addProfileToFamily(b.dataset.id, b.dataset.fid))),
   'share-list': (b) => share(`🎁 La liste de cadeaux de ${D.profiles.find((p) => p.id === b.dataset.id).name} sur Giftmas`, `${appUrl}#/p/${b.dataset.id}`),
@@ -454,6 +501,12 @@ function editGift(id) {
 }
 
 document.addEventListener('change', async (e) => {
+  if (e.target.matches('[data-import]')) {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file || !confirm('Importer cette sauvegarde ?\n\nLes familles, membres et cadeaux absents seront recréés (une famille recréée reçoit un nouveau code). Les réservations ne sont pas restaurées.\n\nAstuce : rejoins d’abord tes familles avec leur code, pour éviter les doublons.')) return;
+    return run(async () => { const n = await importData(file); toast(`Import terminé : ${n.f} famille(s), ${n.p} membre(s), ${n.g} cadeau(x) ajoutés`); });
+  }
   if (e.target.matches('[data-sort]')) { sort = e.target.value; localStorage.setItem('giftmas-sort', sort); return render(); }
   const id = e.target.dataset.reserve;
   if (!id) return;
