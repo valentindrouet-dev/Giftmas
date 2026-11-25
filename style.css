@@ -59,7 +59,7 @@ main { padding: 30px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 9
 .person:active, .gift:active { transform: scale(.97); }
 .person b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person small { color: var(--muted); font-size: 12px; }
-.person, .gift, .card, .list li, .note { border: var(--outline); }
+.person, .gift, .card, .list li { border: var(--outline); }
 .counts { display: flex; align-items: center; gap: 3px; font-weight: 700; font-size: 14px; }
 .counts i { font-style: normal; color: var(--muted); margin: 0 3px; }
 .gift-ico { width: 20px; height: 20px; object-fit: contain; }
@@ -72,14 +72,16 @@ main { padding: 30px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 9
 .members a, .members button { display: grid; justify-items: center; gap: 4px; width: 64px; font-size: 12px; text-decoration: none; text-align: center; }
 .members .avatar { width: 44px; height: 44px; font-size: 18px; box-shadow: none; }
 .members span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tools { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
-.tools .card.note { flex: 1; min-width: 0; margin: 0; }
-.sort { flex: none; max-width: 36%; padding: 6px 8px; border: var(--outline); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; }
-.card.note { display: flex; align-items: flex-start; gap: 6px; font-size: 13.5px; line-height: 1.3; padding: 5px 10px; margin-bottom: 8px; }
-/* une ligne, le texte complet au toucher */
-.note p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.note p.open { white-space: pre-line; }
-.note .link { flex: none; padding: 0; font-size: 13px; color: var(--muted); }
+/* envies : bulle en italique sous la photo du membre */
+.wish { position: relative; margin: 4px 0 10px; padding: 6px 12px; background: var(--card); border: var(--outline); border-radius: 14px; }
+.wish::before, .wish::after { content: ""; position: absolute; left: 72px; border: 9px solid transparent; border-top: 0; }
+.wish::before { top: -9px; border-bottom: 9px solid #3b2a20; }
+.wish::after { top: -6px; border-bottom: 9px solid var(--card); }
+.wish p { font-style: italic; font-size: 14px; line-height: 1.3; white-space: pre-line; cursor: pointer;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wish p.open { display: block; }
+.sort-btn { position: relative; cursor: pointer; }
+.sort-btn select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .muted { color: var(--muted); }
 .btn .avatar { width: 28px; height: 28px; font-size: 13px; box-shadow: none; }
 textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; resize: vertical; }
@@ -91,8 +93,10 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .person.add .ico { width: 44px; height: 44px; }
 
 /* Page personne */
-.phead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.phead .avatar { width: 42px; height: 42px; font-size: 18px; box-shadow: none; }
+.phead { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.phead .avatar { width: 46px; height: 46px; font-size: 18px; box-shadow: none; border: 3px solid #3b2a20; }
+.phead .icon-btn { width: 40px; height: 40px; }
+.phead .icon-btn .ico { width: 38px; height: 38px; }
 .phead h1 { flex: 1; min-width: 0; font-size: 22px; overflow: hidden; text-overflow: ellipsis; }
 .phead small { display: block; font: 12px system-ui; color: var(--muted); }
 .icon-btn {
@@ -104,12 +108,12 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .gifts { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .gift { position: relative; display: flex; flex-direction: column; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s; }
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
-.gift-link img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
+.gift-link img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
 .gift-name { padding: 5px 7px 0; font-size: 12.5px; line-height: 1.25; font-weight: 600; min-height: calc(2.5em + 5px);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.gift-foot { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding-left: 7px; }
+.gift-foot { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding-left: 7px; }
 .price { font-weight: 700; font-size: 13px; color: var(--green); }
-.check { display: grid; place-items: center; width: 44px; height: 40px; cursor: pointer; }
+.check { display: grid; place-items: center; width: 44px; height: 38px; cursor: pointer; }
 .check input { appearance: none; display: grid; place-items: center; width: 26px; height: 26px; margin: 0; border: 2px solid var(--muted); border-radius: 8px; background: var(--card); }
 .check input:checked { border: 0; background: url(assets/i-check.webp) center / 30px no-repeat; }
 .check input:checked:disabled { filter: saturate(.35); }

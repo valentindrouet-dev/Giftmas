@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.11';
+const VERSION = 'v0.12';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -148,17 +148,14 @@ function person(id) {
       <a class="icon-btn" href="#/" aria-label="Retour">${ico('back')}</a>${avatar(p)}
       <h1>${esc(p.name)}<small>${mine ? 'Ta liste · les réservations te sont cachées 🤫' : [age(p), famNames(p.id)].filter(Boolean).join(' · ')}</small></h1>
       <button type="button" class="icon-btn" data-act="new-gift" data-id="${p.id}" aria-label="Ajouter un cadeau">${ico('plus')}</button>
+      <label class="icon-btn sort-btn">${ico('sort')}<select data-sort aria-label="Trier les cadeaux">${SORTS.map(([k, label]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
       <button type="button" class="icon-btn" data-act="profile-menu" data-id="${p.id}" aria-label="Options du profil">${ico('more')}</button>
     </div>
-    <div class="tools">
-      ${p.note || manage ? `<div class="card note"><p onclick="this.classList.toggle('open')">${p.note ? esc(p.note) : '<span class="muted">Pas encore d’envies précisées.</span>'}</p>
-        ${manage ? `<button type="button" class="link" data-act="edit-profile" data-id="${p.id}">Modifier</button>` : ''}</div>` : ''}
-      <select class="sort" data-sort aria-label="Trier les cadeaux">${SORTS.map(([k, label]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${label}</option>`).join('')}</select>
-    </div>
+    ${p.note ? `<div class="wish"><p onclick="this.classList.toggle('open')">${esc(p.note)}</p></div>` : ''}
     ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : empty('gifts', 'Aucune idée pour l’instant.<br>Ajoute le premier cadeau avec le ＋ !')}`;
 }
 
-const SORTS = [['added', '↕ Ajout'], ['price-asc', '↕ Prix ↑'], ['price-desc', '↕ Prix ↓'], ['name', '↕ Nom'], ['shop', '↕ Enseigne'], ['free', '↕ Dispos'], ['taken', '↕ Réservés']];
+const SORTS = [['added', 'Ordre d’ajout'], ['price-asc', 'Prix croissant'], ['price-desc', 'Prix décroissant'], ['name', 'Nom'], ['shop', 'Enseigne'], ['free', 'Disponibles d’abord'], ['taken', 'Réservés d’abord']];
 const shopOf = (g) => { try { return new URL(g.url).hostname.replace(/^www\./, ''); } catch { return '~'; } }; // sans lien : en dernier
 function sortGifts(list, taken) {
   const by = {
