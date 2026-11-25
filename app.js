@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.04';
+const VERSION = 'v0.05';
 let D; // toutes les données visibles
 let filter = localStorage.getItem('giftmas-filter') || '';
 
