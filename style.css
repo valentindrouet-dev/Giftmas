@@ -26,6 +26,7 @@ a { color: inherit; }
   box-shadow: 0 2px 12px rgb(0 0 0 / .15);
 }
 .brand { color: #fff; text-decoration: none; font-size: 22px; }
+.version { font: 500 12px system-ui, sans-serif; opacity: .75; }
 .top nav { display: flex; gap: 2px; }
 .top nav a { position: relative; display: grid; place-items: center; width: 44px; height: 44px; font-size: 21px; text-decoration: none; border-radius: 12px; }
 .top nav a[aria-current] { background: rgb(255 255 255 / .22); }

@@ -7,6 +7,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
+const VERSION = 'v0.03';
 let D; // toutes les données visibles
 let filter = localStorage.getItem('giftmas-filter') || '';
 
@@ -22,7 +23,7 @@ async function start() {
   history.replaceState(null, '', location.pathname + location.hash);
   $('#app').innerHTML = `
     <header class="top">
-      <a href="#/" class="brand">🎁 Giftmas</a>
+      <a href="#/" class="brand">🎁 Giftmas <small class="version">${VERSION}</small></a>
       <nav>
         <a href="#/journal" aria-label="Journal des cadeaux">📜</a>
         <a href="#/notifs" aria-label="Notifications">🔔<b class="badge" hidden></b></a>
@@ -49,7 +50,7 @@ function login(code = '', create = false) {
   $('#app').innerHTML = `
     <main class="login">
       <div class="logo" aria-hidden="true">🎁</div>
-      <h1>Giftmas</h1>
+      <h1>Giftmas <small class="version">${VERSION}</small></h1>
       <p>Les listes de cadeaux de la famille</p>
       <form id="login">
         <label>Ton prénom ou pseudo<input name="pseudo" required maxlength="40" autocomplete="nickname" value="${esc(localStorage.getItem('giftmas-pseudo'))}"></label>
