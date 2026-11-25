@@ -14,10 +14,27 @@ Sans configuration, l'app tourne en **mode démo** avec des données locales au 
 ## Mise en route
 
 ### 1. Supabase (≈ 10 min)
-1. Crée un projet sur [supabase.com](https://supabase.com) (offre gratuite).
-2. **SQL Editor** : colle le contenu de `supabase/schema.sql`, puis **Run**.
-3. **Authentication > Sign In / Providers** : active **Allow anonymous sign-ins**.
-4. **Project Settings > API** : copie l'URL du projet et la clé `anon public` dans `config.js`.
+Giftmas vit dans son propre schéma `giftmas` : il peut partager un projet existant sans toucher à ses tables (`public`).
+
+1. **Vérification préalable si le projet sert déjà à une autre app.** Les connexions anonymes valent pour tout le projet : un visiteur anonyme de Giftmas devient `authenticated` pour l'autre app aussi. Dans **SQL Editor**, lance :
+
+   ```sql
+   select 'règle' as type, tablename as objet, policyname as nom, cmd, roles::text as roles, qual as condition, with_check
+   from pg_policies where schemaname = 'public'
+   union all
+   select 'trigger auth', event_object_table, trigger_name, event_manipulation, null, action_statement, null
+   from information_schema.triggers where event_object_schema = 'auth'
+   union all
+   select 'table sans RLS', relname, null, null, null, null, null
+   from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r' and not relrowsecurity
+   order by 1, 2;
+   ```
+
+   À surveiller : une règle `authenticated` dont la condition ne vérifie pas `auth.uid()` (ou vaut `true`), et un trigger sur `auth.users` qui crée des lignes pour chaque nouvel utilisateur.
+2. **SQL Editor** : colle le contenu de `supabase/schema.sql`, puis **Run**. Tout ou rien : en cas d'erreur, rien n'est créé.
+3. **Project Settings > Data API > Exposed schemas** : ajoute `giftmas` à la liste (garde `public`), puis **Save**.
+4. **Authentication > Sign In / Providers** : active **Allow anonymous sign-ins**.
+5. **Project Settings > API** : copie l'URL du projet et la clé `anon public` dans `config.js`.
 
 ### 2. GitHub Pages
 **Settings > Pages** : *Deploy from a branch*, branche `main`, dossier `/ (root)`.
@@ -35,14 +52,14 @@ Mets la clé **publique** dans `config.js` (`VAPID_PUBLIC_KEY`), puis :
 ```bash
 npx supabase login
 npx supabase link --project-ref <ref-du-projet>
-npx supabase secrets set VAPID_PUBLIC_KEY=<publique> VAPID_PRIVATE_KEY=<privée> VAPID_SUBJECT=mailto:<ton-email>
-npx supabase functions deploy push
-npx supabase functions deploy preview
+npx supabase secrets set GIFTMAS_VAPID_PUBLIC_KEY=<publique> GIFTMAS_VAPID_PRIVATE_KEY=<privée> GIFTMAS_VAPID_SUBJECT=mailto:<ton-email>
+npx supabase functions deploy giftmas-push
+npx supabase functions deploy giftmas-preview
 ```
 
-Enfin, **Database > Webhooks > Create** : table `notifications`, événement `Insert`, type **Supabase Edge Functions**, fonction `push`.
+Enfin, **Database > Webhooks > Create** : table `giftmas.notifications`, événement `Insert`, type **Supabase Edge Functions**, fonction `giftmas-push`.
 
-`preview` est facultative : elle pré-remplit le nom et l'image depuis le lien produit. Amazon la bloque souvent, il suffit alors d'ajouter une photo.
+`giftmas-preview` est facultative : elle pré-remplit le nom et l'image depuis le lien produit. Amazon la bloque souvent, il suffit alors d'ajouter une photo.
 
 ### 4. Sur iPhone
 Safari > Partager > **Sur l'écran d'accueil**, puis ouvre Giftmas depuis l'icône. Dans 🔔, touche **Recevoir les notifications**. Chaque personne qui veut le push sur son téléphone doit faire cette manip ; les autres voient leurs notifications dans l'app.

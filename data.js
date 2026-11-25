@@ -6,7 +6,7 @@ export const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().
 
 async function supabaseApi() {
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'giftmas' } });
   const ok = ({ data, error }) => {
     if (error) throw new Error(error.code === '23505' ? 'Déjà réservé par quelqu’un d’autre !' : error.message);
     return data;
@@ -45,9 +45,9 @@ async function supabaseApi() {
     reserve: async (id) => ok(await sb.from('reservations').insert({ gift_id: id, reserved_by: pseudo })),
     unreserve: async (id) => ok(await sb.from('reservations').delete().eq('gift_id', id)),
     markRead: async () => ok(await sb.from('notifications').update({ read: true }).eq('read', false)),
-    preview: async (url) => (await sb.functions.invoke('preview', { body: { url } })).data ?? {},
+    preview: async (url) => (await sb.functions.invoke('giftmas-preview', { body: { url } })).data ?? {},
     savePush: async (sub) => ok(await sb.from('push_subscriptions').upsert({ endpoint: sub.endpoint, pseudo, subscription: sub.toJSON() })),
-    subscribe: (cb) => sb.channel('db').on('postgres_changes', { event: '*', schema: 'public' }, cb).subscribe(),
+    subscribe: (cb) => sb.channel('db').on('postgres_changes', { event: '*', schema: 'giftmas' }, cb).subscribe(),
   };
 }
 

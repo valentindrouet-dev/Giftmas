@@ -1,8 +1,13 @@
--- Giftmas : schéma et sécurité (RLS).
--- À coller tel quel dans Supabase > SQL Editor > Run.
+-- Giftmas : schéma et sécurité (RLS), isolés dans le schéma "giftmas".
+-- À coller tel quel dans Supabase > SQL Editor > Run. Tout ou rien : en cas d'erreur, rien n'est créé.
+-- Ne touche à rien dans "public" : cohabite sans risque avec une autre app du même projet.
 -- Identité : connexion anonyme Supabase (un compte par appareil) + pseudo.
 -- Le pseudo sert d'identité "humaine" (créateur de profil, réservations, notifications),
 -- pour qu'un même pseudo retrouve ses droits sur un nouvel appareil.
+
+begin;
+create schema giftmas;
+set local search_path = giftmas;
 
 -- ───────────── Tables ─────────────
 create table app_users (
@@ -74,32 +79,32 @@ create table push_subscriptions (
 );
 
 -- ───────────── Fonctions d'aide (security definer : contournent la RLS sans récursion) ─────────────
-create function my_pseudo() returns text language sql stable security definer set search_path = public as
+create function my_pseudo() returns text language sql stable security definer set search_path = giftmas as
 $$ select pseudo from app_users where id = auth.uid() $$;
 
 create function same(a text, b text) returns boolean language sql immutable as
 $$ select lower(trim(a)) = lower(trim(b)) $$;
 
-create function is_member(f uuid) returns boolean language sql stable security definer set search_path = public as
+create function is_member(f uuid) returns boolean language sql stable security definer set search_path = giftmas as
 $$ select exists (select 1 from memberships where family_id = f and user_id = auth.uid()) $$;
 
-create function can_see_profile(p uuid) returns boolean language sql stable security definer set search_path = public as
+create function can_see_profile(p uuid) returns boolean language sql stable security definer set search_path = giftmas as
 $$ select exists (select 1 from profile_families pf join memberships m using (family_id)
                   where pf.profile_id = p and m.user_id = auth.uid()) $$;
 
-create function can_see_gift(g uuid) returns boolean language sql stable security definer set search_path = public as
+create function can_see_gift(g uuid) returns boolean language sql stable security definer set search_path = giftmas as
 $$ select exists (select 1 from gifts where id = g and can_see_profile(profile_id)) $$;
 
 -- Vrai si le cadeau est sur MON profil : on me cache alors qui l'a réservé (effet surprise).
-create function is_my_gift(g uuid) returns boolean language sql stable security definer set search_path = public as
+create function is_my_gift(g uuid) returns boolean language sql stable security definer set search_path = giftmas as
 $$ select exists (select 1 from gifts gi join profiles p on p.id = gi.profile_id
                   where gi.id = g and same(p.owner, my_pseudo())) $$;
 
-create function can_manage_profile(p uuid) returns boolean language sql stable security definer set search_path = public as
+create function can_manage_profile(p uuid) returns boolean language sql stable security definer set search_path = giftmas as
 $$ select exists (select 1 from profiles where id = p and (same(created_by, my_pseudo()) or same(owner, my_pseudo()))) $$;
 
 -- ───────────── RPC appelées par l'app ─────────────
-create function create_family(p_name text) returns families language plpgsql security definer set search_path = public as $$
+create function create_family(p_name text) returns families language plpgsql security definer set search_path = giftmas as $$
 declare f families;
 begin
   if my_pseudo() is null then raise exception 'Choisis un pseudo d''abord'; end if;
@@ -112,7 +117,7 @@ begin
   return f;
 end $$;
 
-create function join_family(p_code text) returns families language plpgsql security definer set search_path = public as $$
+create function join_family(p_code text) returns families language plpgsql security definer set search_path = giftmas as $$
 declare f families;
 begin
   if my_pseudo() is null then raise exception 'Choisis un pseudo d''abord'; end if;
@@ -123,7 +128,7 @@ begin
 end $$;
 
 create function create_profile(p_name text, p_photo text, p_is_me boolean, p_families uuid[])
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = giftmas as $$
 declare pid uuid; f uuid;
 begin
   if my_pseudo() is null then raise exception 'Choisis un pseudo d''abord'; end if;
@@ -139,14 +144,14 @@ begin
 end $$;
 
 create function add_profile_to_family(p_profile uuid, p_family uuid) returns void
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = giftmas as $$
 begin
   if not (can_see_profile(p_profile) and is_member(p_family)) then raise exception 'Non autorisé'; end if;
   insert into profile_families values (p_profile, p_family) on conflict do nothing;
 end $$;
 
 -- ───────────── Notification au créateur du profil à chaque réservation ─────────────
-create function notify_reservation() returns trigger language plpgsql security definer set search_path = public as $$
+create function notify_reservation() returns trigger language plpgsql security definer set search_path = giftmas as $$
 declare g gifts; p profiles;
 begin
   select * into g from gifts where id = new.gift_id;
@@ -164,13 +169,12 @@ for each row execute function notify_reservation();
 
 -- Cibles push d'une notification : abonnés au bon pseudo ET membres d'une famille du profil.
 create function push_targets(p_profile uuid, p_recipient text) returns setof push_subscriptions
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = giftmas as $$
   select s.* from push_subscriptions s
   where same(s.pseudo, p_recipient)
     and exists (select 1 from memberships m join profile_families pf using (family_id)
                 where m.user_id = s.user_id and pf.profile_id = p_profile)
 $$;
-revoke execute on function push_targets(uuid, text) from public, anon, authenticated;
 
 -- ───────────── RLS ─────────────
 alter table app_users enable row level security;
@@ -212,8 +216,6 @@ create policy notif_read on notifications for select to authenticated
   using (same(recipient, my_pseudo()) and can_see_profile(profile_id));
 create policy notif_update on notifications for update to authenticated
   using (same(recipient, my_pseudo()) and can_see_profile(profile_id));
-revoke insert, update, delete on notifications from anon, authenticated;
-grant update (read) on notifications to authenticated;
 
 create policy push_read on push_subscriptions for select to authenticated using (user_id = auth.uid());
 create policy push_insert on push_subscriptions for insert to authenticated
@@ -224,3 +226,15 @@ create policy push_delete on push_subscriptions for delete to authenticated usin
 
 -- ───────────── Temps réel ─────────────
 alter publication supabase_realtime add table profiles, profile_families, gifts, reservations, notifications;
+
+-- ───────────── Droits : rien pour "anon", tout passe par la RLS pour "authenticated" ─────────────
+grant usage on schema giftmas to authenticated, service_role;
+grant all on all tables in schema giftmas to authenticated, service_role;
+grant all on all sequences in schema giftmas to authenticated, service_role;
+revoke execute on all functions in schema giftmas from public;
+grant execute on all functions in schema giftmas to authenticated, service_role;
+revoke execute on function push_targets(uuid, text) from authenticated;
+revoke insert, update, delete on notifications from authenticated;
+grant update (read) on notifications to authenticated;
+
+commit;

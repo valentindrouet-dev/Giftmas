@@ -8,10 +8,11 @@ create function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to authenticated;
 create publication supabase_realtime;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+-- Une table "profiles" de l'autre app, pour vérifier la cohabitation
+create table public.profiles (id int);
 
 \i supabase/schema.sql
+set search_path = giftmas, public;
 
 -- Données de test
 insert into families (id, name, code) values ('00000000-0000-0000-0000-0000000000f1', 'Famille démo', 'NOEL24');
@@ -41,6 +42,14 @@ select join_family('NOEL24');
 select create_profile('Moi Richard', null, true, array['00000000-0000-0000-0000-0000000000f1'::uuid]);
 select as_user('44444444-4444-4444-4444-444444444444');
 insert into app_users (pseudo) values ('Intrus');
+reset role;
+set role anon;
+do $$ begin
+  perform count(*) from gifts;
+  raise exception 'anon lit les cadeaux';
+exception when insufficient_privilege or undefined_table then null; end $$;
+set role authenticated;
+select check_(true, 'le rôle anon (sans connexion) n''a aucun accès');
 
 select check_((select count(*) from gifts) = 0, 'un étranger ne voit aucun cadeau');
 select check_((select count(*) from families) = 0, 'un étranger ne voit aucune famille');

@@ -1,14 +1,14 @@
 // Envoie un web push à chaque nouvelle notification.
-// Déclenchée par un Database Webhook Supabase (table notifications, INSERT), qui fournit la clé service.
+// Déclenchée par un Database Webhook Supabase (table giftmas.notifications, INSERT), qui fournit la clé service.
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 webpush.setVapidDetails(
-  Deno.env.get("VAPID_SUBJECT") ?? "mailto:giftmas@example.com",
-  Deno.env.get("VAPID_PUBLIC_KEY")!,
-  Deno.env.get("VAPID_PRIVATE_KEY")!,
+  Deno.env.get("GIFTMAS_VAPID_SUBJECT") ?? "mailto:giftmas@example.com",
+  Deno.env.get("GIFTMAS_VAPID_PUBLIC_KEY")!,
+  Deno.env.get("GIFTMAS_VAPID_PRIVATE_KEY")!,
 );
-const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { db: { schema: "giftmas" } });
 
 Deno.serve(async (req) => {
   const { record } = await req.json();
