@@ -34,6 +34,7 @@ create table profiles (
   photo text check (photo ~ '^(https://|data:image/)' and length(photo) < 300000),
   created_by text not null,           -- pseudo du créateur (reçoit les notifications)
   owner text,                         -- pseudo de la personne elle-même ("c'est moi"), sinon null
+  note text check (length(note) <= 500), -- envies, visibles au-dessus de la liste
   created_at timestamptz not null default now()
 );
 
@@ -148,6 +149,13 @@ language plpgsql security definer set search_path = giftmas as $$
 begin
   if not (can_see_profile(p_profile) and is_member(p_family)) then raise exception 'Non autorisé'; end if;
   insert into profile_families values (p_profile, p_family) on conflict do nothing;
+end $$;
+
+create function set_profile_note(p_profile uuid, p_note text) returns void
+language plpgsql security definer set search_path = giftmas as $$
+begin
+  if not (can_see_profile(p_profile) and can_manage_profile(p_profile)) then raise exception 'Non autorisé'; end if;
+  update profiles set note = nullif(trim(p_note), '') where id = p_profile;
 end $$;
 
 -- ───────────── Notification au créateur du profil à chaque réservation ─────────────

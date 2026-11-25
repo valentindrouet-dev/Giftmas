@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.09';
+const VERSION = 'v0.10';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
 let D; // toutes les données visibles
@@ -29,11 +29,12 @@ async function start() {
       <a href="#/" class="brand"><img src="assets/hero-gift.webp" alt="">Giftmas <small class="version">${VERSION}</small></a>
       <nav>
         <a href="#/boutiques" aria-label="Boutiques en ligne">${ico('journal')}</a>
+        <a href="#/" aria-label="Accueil">${ico('home')}</a>
         <a href="#/notifs" aria-label="Notifications">${ico('bell')}<b class="badge" hidden></b></a>
         <a href="#/familles" aria-label="Familles et réglages">${ico('family')}</a>
       </nav>
     </header>
-    ${DEMO ? '<p class="demo">Mode démo : données locales à ce navigateur</p>' : ''}
+    ${DEMO ? '<p class="demo">Mode démo</p>' : ''}
     <main id="view"></main>`;
   let t;
   api.subscribe(() => { clearTimeout(t); t = setTimeout(refresh, 250); });
@@ -88,7 +89,7 @@ function render() {
   const [, page, id] = location.hash.split('/');
   const unread = D.notifications.filter((n) => !n.read).length;
   $('#view').innerHTML = page === 'p' ? person(id) : page === 'boutiques' ? shops() : page === 'notifs' ? notifs() : page === 'familles' ? families() : home();
-  document.querySelectorAll('.top nav a').forEach((a) => a.toggleAttribute('aria-current', a.hash === `#/${page}`));
+  document.querySelectorAll('.top nav a').forEach((a) => a.toggleAttribute('aria-current', a.hash === `#/${page ?? ''}`));
   const badge = $('.badge');
   badge.hidden = !unread;
   badge.textContent = unread;
@@ -100,6 +101,8 @@ const inFilter = (profileId) => !filter || D.links.some((l) => l.profile_id === 
 const avatar = (p) => p.photo
   ? `<img class="avatar" src="${esc(p.photo)}" alt="">`
   : `<span class="avatar" style="--c:hsl(${hue(p.name)} 60% 50%)" aria-hidden="true">${esc(p.name.slice(0, 1).toUpperCase())}</span>`;
+const famNames = (pid) => D.families.filter((f) => D.links.some((l) => l.profile_id === pid && l.family_id === f.id)).map((f) => esc(f.name)).join(' · ');
+const giftIco = (cls = '') => `<img class="gift-ico ${cls}" src="assets/hero-gift.webp" alt="">`;
 const thumb = (g) => (g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : '<img src="assets/gift-placeholder.webp" alt="">');
 
 const chips = () => D.families.length < 2 ? '' : `<div class="chips" role="group" aria-label="Filtrer par famille">
@@ -110,8 +113,10 @@ function home() {
   const people = D.profiles.filter((p) => inFilter(p.id)).map((p) => {
     const gifts = D.gifts.filter((g) => g.profile_id === p.id);
     const taken = gifts.filter((g) => D.reservations.some((r) => r.gift_id === g.id)).length;
-    const info = same(p.owner, D.pseudo) ? 'Ta liste' : `${gifts.length} idée${gifts.length > 1 ? 's' : ''}${taken ? ` · ${taken} ✓` : ''}`;
-    return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b><small>${info}</small></a>`;
+    const counts = same(p.owner, D.pseudo)
+      ? `<span class="counts" aria-label="${gifts.length} idées">${gifts.length} ${giftIco()}</span>`
+      : `<span class="counts" aria-label="${gifts.length - taken} disponibles, ${taken} réservés">${gifts.length - taken} ${giftIco()} <i>|</i> ${taken} ${giftIco('off')}</span>`;
+    return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b>${counts}<small class="fams">${famNames(p.id)}</small></a>`;
   });
   return `${chips()}<section class="people">${people.join('')}
     <button type="button" class="person add" data-act="new-profile"><span class="avatar" aria-hidden="true">${ico('plus')}</span><b>Ajouter</b><small>une personne</small></button>
@@ -138,10 +143,12 @@ function person(id) {
   });
   return `<div class="phead">
       <a class="icon-btn" href="#/" aria-label="Retour">${ico('back')}</a>${avatar(p)}
-      <h1>${esc(p.name)}${mine ? '<small>Ta liste · les réservations te sont cachées 🤫</small>' : ''}</h1>
+      <h1>${esc(p.name)}<small>${mine ? 'Ta liste · les réservations te sont cachées 🤫' : famNames(p.id)}</small></h1>
       <button type="button" class="icon-btn" data-act="new-gift" data-id="${p.id}" aria-label="Ajouter un cadeau">${ico('plus')}</button>
       <button type="button" class="icon-btn" data-act="profile-menu" data-id="${p.id}" aria-label="Options du profil">${ico('more')}</button>
     </div>
+    ${p.note || manage ? `<div class="card note"><p onclick="this.classList.toggle('open')">${p.note ? esc(p.note) : '<span class="muted">Pas encore d’envies précisées.</span>'}</p>
+      ${manage ? `<button type="button" class="link" data-act="edit-note" data-id="${p.id}">Modifier</button>` : ''}</div>` : ''}
     ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : empty('gifts', 'Aucune idée pour l’instant.<br>Ajoute le premier cadeau avec le ＋ !')}`;
 }
 
@@ -154,7 +161,7 @@ const SHOPS = [
 function shops() {
   return `<h1 class="title">Boutiques</h1>
     <section class="people">${SHOPS.map(([name, site, what]) => `<a class="person" href="https://www.${site}" target="_blank" rel="noopener">
-      <span class="avatar" style="--c:hsl(${hue(name)} 55% 45%)" aria-hidden="true">${esc(name.slice(0, 1))}</span><b>${esc(name)}</b><small>${what}</small></a>`).join('')}
+      <span class="avatar shop" style="--c:hsl(${hue(name)} 55% 45%)" aria-hidden="true">${esc(name.slice(0, 1))}<img src="https://www.google.com/s2/favicons?domain=${site.split('/')[0]}&amp;sz=128" alt="" onerror="this.remove()"></span><b>${esc(name)}</b><small>${what}</small></a>`).join('')}
     </section>`;
 }
 
@@ -173,8 +180,17 @@ function notifs() {
 
 function families() {
   return `<h1 class="title">Familles</h1>
-    ${D.families.map((f) => `<div class="card fam"><div><b>${esc(f.name)}</b><small>Code : <span class="code">${esc(f.code)}</span></small></div>
-      <button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button></div>`).join('')}
+    ${D.families.map((f) => {
+      const members = D.profiles.filter((p) => D.links.some((l) => l.profile_id === p.id && l.family_id === f.id));
+      return `<div class="card"><div class="fam"><div><b>${esc(f.name)}</b><small>Code : <span class="code">${esc(f.code)}</span></small></div>
+        <button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button></div>
+        <div class="members">${members.map((p) => `<a href="#/p/${p.id}">${avatar(p)}<span>${esc(p.name)}</span></a>`).join('') || '<small>Personne pour l’instant</small>'}</div></div>`;
+    }).join('')}
+    <div class="card stack"><b>Mon profil cadeaux</b>
+      ${D.profiles.filter((p) => same(p.owner, D.pseudo) || same(p.created_by, D.pseudo)).map((p) =>
+        `<button type="button" class="btn ghost" data-act="edit-note" data-id="${p.id}">${avatar(p)} Envies de ${esc(p.name)}</button>`).join('')
+        || '<small>Crée ton profil depuis l’accueil (＋ Ajouter, « C’est moi ») pour indiquer tes envies.</small>'}
+    </div>
     <form class="card stack" data-form="join"><label>Rejoindre une autre famille<input name="code" required maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="Code"></label><button class="btn">Rejoindre</button></form>
     <form class="card stack" data-form="create"><label>Créer une nouvelle famille<input name="name" required maxlength="60" placeholder="Famille Martin"></label><button class="btn ghost">Créer</button></form>
     <p class="card">Connecté en tant que <b>${esc(D.pseudo)}</b>. <button type="button" class="link" data-act="logout">Se déconnecter</button></p>`;
@@ -292,11 +308,21 @@ function newGift(profileId) {
   };
 }
 
+function editNote(id) {
+  const p = D.profiles.find((p) => p.id === id);
+  $('#sheet').close();
+  sheet(`<h2>Envies de ${esc(p.name)}</h2>
+    <label>Goûts, tailles, idées, ce qu’il faut éviter…<textarea name="note" maxlength="500" rows="5">${esc(p.note)}</textarea></label>
+    <div class="row">${cancel}<button class="btn">Enregistrer</button></div>`,
+  async (f) => { await api.setNote(id, f.get('note')); await refresh(); });
+}
+
 function profileMenu(id) {
   const p = D.profiles.find((p) => p.id === id);
   const others = D.families.filter((f) => !D.links.some((l) => l.profile_id === id && l.family_id === f.id));
   sheet(`<h2>${esc(p.name)}</h2>
     ${others.map((f) => `<button type="button" class="btn ghost" data-act="add-to-family" data-id="${id}" data-fid="${f.id}">Ajouter aussi à ${esc(f.name)}</button>`).join('')}
+    ${same(p.created_by, D.pseudo) || same(p.owner, D.pseudo) ? `<button type="button" class="btn ghost" data-act="edit-note" data-id="${id}">Modifier les envies</button>` : ''}
     <button type="button" class="btn ghost" data-act="share-list" data-id="${id}">${ico('share')} Partager cette liste</button>
     ${same(p.created_by, D.pseudo) ? `<button type="button" class="btn danger" data-act="del-profile" data-id="${id}">Supprimer ce profil</button>` : ''}
     <button class="btn ghost" value="cancel">Fermer</button>`, () => {});
@@ -313,6 +339,7 @@ const run = (fn) => fn().then(refresh).catch((e) => toast(e.message));
 const actions = {
   filter: (b) => { filter = b.dataset.id; localStorage.setItem('giftmas-filter', filter); render(); },
   'new-profile': () => newProfile(),
+  'edit-note': (b) => editNote(b.dataset.id),
   'new-gift': (b) => newGift(b.dataset.id),
   'profile-menu': (b) => profileMenu(b.dataset.id),
   'del-gift': (b) => confirm('Supprimer ce cadeau (et sa réservation) ?') && run(() => api.deleteGift(b.dataset.id)),

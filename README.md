@@ -36,6 +36,8 @@ Giftmas vit dans son propre schéma `giftmas` : il peut partager un projet exist
 4. **Authentication > Sign In / Providers** : active **Allow anonymous sign-ins**.
 5. **Project Settings > API** : copie l'URL du projet et la clé `anon public` dans `config.js`.
 
+**Mises à jour de la base :** chaque fichier de `supabase/migrations/` se lance une seule fois dans SQL Editor, dans l'ordre (déjà inclus dans `schema.sql` pour une nouvelle installation).
+
 ### 2. GitHub Pages
 **Settings > Pages** : *Deploy from a branch*, branche `main`, dossier `/ (root)`.
 Ouvre le lien, choisis « En créer une » pour créer ta famille, puis envoie l'invitation depuis 👪 > **Inviter**. Le lien d'invitation contient le code.

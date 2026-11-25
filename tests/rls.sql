@@ -92,6 +92,25 @@ select check_((select count(*) from reservations r join gifts g on g.id = r.gift
 select check_((select count(*) from notifications) = 0, 'pas de notification à Richard pour son propre profil');
 select check_((select count(*) from reservations) = 1, 'Richard voit les réservations des autres profils');
 
+-- Envies : le créateur ou la personne peuvent les écrire, pas les autres
+select as_user('11111111-1111-1111-1111-111111111111');
+select set_profile_note('00000000-0000-0000-0000-0000000000a1', '  Fan de LEGO  ');
+select check_((select note from profiles where name = 'Richard') = 'Fan de LEGO', 'le créateur écrit les envies');
+select as_user('22222222-2222-2222-2222-222222222222');
+do $$ begin
+  perform set_profile_note('00000000-0000-0000-0000-0000000000a1', 'hack');
+  raise exception 'envies modifiées par un autre';
+exception when raise_exception then if sqlerrm <> 'Non autorisé' then raise; end if; end $$;
+select check_(true, 'un autre membre ne peut pas modifier les envies');
+do $$ begin
+  update profiles set note = 'hack';
+  if (select note from profiles where name = 'Richard') <> 'Fan de LEGO' then raise exception 'ÉCHEC : update direct accepté'; end if;
+end $$;
+select check_(true, 'pas de modification directe de la table profiles');
+select as_user('33333333-3333-3333-3333-333333333333');
+select set_profile_note((select id from profiles where name = 'Moi Richard'), 'Des chaussettes');
+select check_((select note from profiles where name = 'Moi Richard') = 'Des chaussettes', 'la personne écrit ses propres envies');
+
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');
 do $$ begin
