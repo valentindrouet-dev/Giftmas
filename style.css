@@ -109,6 +109,7 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .gift { position: relative; display: flex; flex-direction: column; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s; }
 /* pas d'aperçu de lien iOS ni de sélection de texte sur appui long */
 .gift { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.gift-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
 .gift-link img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
 .gift-name { padding: 5px 7px 0; font-size: 12.5px; line-height: 1.25; font-weight: 600; min-height: calc(2.5em + 5px);
@@ -120,10 +121,6 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .check input:checked { border: 0; background: url(assets/i-check.webp) center / 30px no-repeat; }
 .check input:checked:disabled { filter: saturate(.35); }
 .gift.taken img, .gift.taken .ph { filter: grayscale(.7) opacity(.5); }
-.by {
-  position: absolute; top: 6px; left: 6px; max-width: calc(100% - 40px); padding: 3px 7px; border-radius: 8px;
-  background: var(--green); color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
 .del { position: absolute; top: 3px; right: 3px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; background: none; }
 .del .ico { width: 22px; height: 22px; opacity: .85; }
 .icon-btn .ico { width: 40px; height: 40px; }
@@ -184,3 +181,16 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .logo { width: 150px; margin: auto; animation: wiggle 2.5s ease-in-out infinite; }
 @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-6deg); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* infobulle d'un cadeau */
+.pop { position: absolute; z-index: 8; width: 240px; display: grid; gap: 6px; padding: 12px; background: var(--card);
+  border: var(--outline); border-radius: 16px; box-shadow: 0 8px 24px rgb(0 0 0 / .2); }
+.pop b { font-size: 15px; line-height: 1.3; }
+.pop small { color: var(--muted); }
+.pop .btn { margin-top: 2px; }
+.pop::before, .pop::after { content: ""; position: absolute; left: var(--ax); transform: translateX(-50%); border: 9px solid transparent; }
+.pop::before { top: -18px; border-bottom-color: #3b2a20; }
+.pop::after { top: -15px; border-bottom-color: var(--card); }
+.pop.above::before { top: auto; bottom: -18px; border-color: #3b2a20 transparent transparent; }
+.pop.above::after { top: auto; bottom: -15px; border-color: var(--card) transparent transparent; }
+.pop .btn { text-decoration: none; }

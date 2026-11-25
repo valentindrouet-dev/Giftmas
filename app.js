@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.13';
+const VERSION = 'v0.14';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -29,8 +29,8 @@ async function start() {
     <header class="top">
       <a href="#/" class="brand"><img src="assets/hero-gift.webp" alt="">Giftmas <small class="version">${VERSION}</small></a>
       <nav>
-        <a href="#/boutiques" aria-label="Boutiques en ligne">${ico('journal')}</a>
         <a href="#/" aria-label="Accueil">${ico('home')}</a>
+        <a href="#/boutiques" aria-label="Boutiques en ligne">${ico('journal')}</a>
         <a href="#/notifs" aria-label="Notifications">${ico('bell')}<b class="badge" hidden></b></a>
         <a href="#/familles" aria-label="Familles et réglages">${ico('family')}</a>
       </nav>
@@ -136,11 +136,10 @@ function person(id) {
     const byMe = r && same(r.reserved_by, D.pseudo);
     const inner = `${thumb(g)}<span class="gift-name">${esc(g.name)}</span>`;
     return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}">
-      ${g.url ? `<a class="gift-link" href="${esc(g.url)}" target="_blank" rel="noopener" aria-label="Acheter ${esc(g.name)}">${inner}</a>` : `<div class="gift-link">${inner}</div>`}
+      <button type="button" class="gift-link" data-act="gift-info" data-id="${g.id}" aria-label="Détails de ${esc(g.name)}">${inner}</button>
       <div class="gift-foot"><span class="price">${euro(g.price)}</span>
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
           aria-label="${r ? `Réservé par ${esc(r.reserved_by)}` : `Je réserve ${esc(g.name)}`}"></label>`}</div>
-      ${r ? `<span class="by">✓ ${byMe ? 'Moi' : esc(r.reserved_by)}</span>` : ''}
       ${same(g.added_by, D.pseudo) || manage ? `<button type="button" class="del" data-act="del-gift" data-id="${g.id}" aria-label="Supprimer ${esc(g.name)}">${ico('close')}</button>` : ''}
     </article>`;
   });
@@ -379,6 +378,7 @@ const actions = {
   'new-profile': () => newProfile(),
   'edit-profile': (b) => editProfile(b.dataset.id),
   'new-gift': (b) => newGift(b.dataset.id),
+  'gift-info': (b) => giftInfo(b),
   'profile-menu': (b) => profileMenu(b.dataset.id),
   'del-gift': (b) => confirm('Supprimer ce cadeau (et sa réservation) ?') && run(() => api.deleteGift(b.dataset.id)),
   'del-profile': (b) => confirm('Supprimer ce profil et tous ses cadeaux ?') && ($('#sheet').close(), location.hash = '#/', run(() => api.deleteProfile(b.dataset.id))),
@@ -412,7 +412,29 @@ document.addEventListener('pointerdown', (e) => {
 // le relâchement d'un appui long ne doit pas ouvrir le lien d'achat
 document.addEventListener('click', (e) => { if (pressed && e.target.closest('.gift')) { e.preventDefault(); e.stopPropagation(); pressed = false; } }, true);
 document.addEventListener('contextmenu', (e) => { if (e.target.closest('.gift')) e.preventDefault(); });
+// Infobulle d'un cadeau : nom, prix, qui l'a réservé, et le lien vers la boutique.
+function giftInfo(el) {
+  const g = D.gifts.find((g) => g.id === el.dataset.id), r = D.reservations.find((r) => r.gift_id === g.id);
+  const pop = $('#pop');
+  pop.innerHTML = `<b>${esc(g.name)}</b>${g.price != null ? `<span class="price">${euro(g.price)}</span>` : ''}
+    ${r ? `<small>Réservé par ${same(r.reserved_by, D.pseudo) ? 'moi' : esc(r.reserved_by)}</small>` : ''}
+    ${g.url ? `<a class="btn small" href="${esc(g.url)}" target="_blank" rel="noopener">${ico('link')} Voir sur le site</a>` : '<small>Pas de lien d’achat</small>'}`;
+  pop.hidden = false;
+  const t = el.closest('.gift').getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  const left = Math.min(Math.max(t.left + t.width / 2 - w / 2, 8), innerWidth - w - 8);
+  const below = t.bottom + h + 12 < innerHeight;
+  pop.classList.toggle('above', !below);
+  pop.style.left = `${left}px`;
+  pop.style.top = `${(below ? t.bottom + 10 : t.top - h - 10) + scrollY}px`;
+  pop.style.setProperty('--ax', `${t.left + t.width / 2 - left}px`);
+}
+const closePop = () => { $('#pop').hidden = true; };
+document.addEventListener('click', (e) => { if (!e.target.closest('#pop, [data-act="gift-info"]')) closePop(); });
+addEventListener('scroll', closePop, { passive: true });
+addEventListener('hashchange', closePop);
+
 function editGift(id) {
+  closePop();
   const g = D.gifts.find((g) => g.id === id), p = D.profiles.find((p) => p.id === g.profile_id);
   if (!(same(g.added_by, D.pseudo) || canManage(p))) return toast(`Seul ${g.added_by} ou le gestionnaire de ${p.name} peut modifier ce cadeau`);
   navigator.vibrate?.(15);
