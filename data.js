@@ -51,6 +51,7 @@ async function supabaseApi() {
     reserve: async (id) => ok(await sb.from('reservations').insert({ gift_id: id, reserved_by: pseudo })),
     unreserve: async (id) => ok(await sb.from('reservations').delete().eq('gift_id', id)),
     markRead: async () => ok(await sb.from('notifications').update({ read: true }).eq('read', false)),
+    deleteNotif: async (id) => ok(await sb.from('notifications').delete().eq('id', id)),
     savePush: async (sub) => ok(await sb.from('push_subscriptions').upsert({ endpoint: sub.endpoint, pseudo, subscription: sub.toJSON() })),
     subscribe: (cb) => sb.channel('db').on('postgres_changes', { event: '*', schema: 'giftmas' }, cb).subscribe(),
   };
@@ -138,6 +139,7 @@ function demoApi() {
     }),
     unreserve: async (id) => mut((s) => { s.reservations = s.reservations.filter((r) => !(r.gift_id === id && same(r.reserved_by, me()))); }),
     markRead: async () => mut((s) => s.notifications.forEach((n) => same(n.recipient, me()) && (n.read = true))),
+    deleteNotif: async (id) => mut((s) => { s.notifications = s.notifications.filter((n) => String(n.id) !== String(id) || !same(n.recipient, me())); }),
     savePush: async () => fail('Notifications push indisponibles en mode démo'),
     subscribe: (cb) => listeners.push(cb),
   };

@@ -266,6 +266,8 @@ create policy resa_delete on reservations for delete to authenticated
 
 create policy notif_read on notifications for select to authenticated
   using (same(recipient, my_pseudo()) and can_see_profile(profile_id));
+create policy notif_delete on notifications for delete to authenticated
+  using (same(recipient, my_pseudo()) and can_see_profile(profile_id));
 create policy notif_update on notifications for update to authenticated
   using (same(recipient, my_pseudo()) and can_see_profile(profile_id));
 
@@ -286,7 +288,7 @@ grant all on all sequences in schema giftmas to authenticated, service_role;
 revoke execute on all functions in schema giftmas from public;
 grant execute on all functions in schema giftmas to authenticated, service_role;
 revoke execute on function push_targets(uuid, text) from authenticated;
-revoke insert, update, delete on notifications from authenticated;
+revoke insert, update on notifications from authenticated;
 grant update (read) on notifications to authenticated;
 
 commit;

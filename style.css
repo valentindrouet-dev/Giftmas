@@ -135,6 +135,9 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .list li.unread { box-shadow: inset 4px 0 var(--accent), var(--shadow); }
 .list li > img { flex: none; width: 48px; height: 48px; border-radius: 10px; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 22px; }
 .list small { display: block; color: var(--muted); font-size: 13px; }
+.list li > div { flex: 1; min-width: 0; }
+.notif-del { flex: none; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; background: none; }
+.notif-del .ico { width: 26px; height: 26px; }
 .empty { text-align: center; color: var(--muted); padding: 24px 12px; }
 .empty img { display: block; width: 180px; max-width: 60%; margin: 0 auto 12px; }
 .card { background: var(--card); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); margin-bottom: 12px; }

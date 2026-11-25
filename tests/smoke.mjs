@@ -48,6 +48,9 @@ assert.ok(await val.isDisabled('.gift[data-name="LEGO Batman"] input'), 'Valenti
 await val.waitForSelector('.badge:has-text("2")');
 await val.click('[aria-label=Notifications]');
 await val.waitForSelector('text=Thibaut a réservé LEGO Batman pour Richard');
+const nbNotifs = (await val.$$('.list li')).length;
+await val.click('.list li:has-text("LEGO Batman") [data-act=del-notif]');
+await val.waitForFunction((n) => document.querySelectorAll('.list li').length === n - 1, nbNotifs);
 await val.click('[aria-label="Boutiques en ligne"]');
 await val.waitForSelector('.person >> text=Darty');
 assert.ok((await val.$$('.person[href^="https://www."]')).length >= 8, 'au moins 8 boutiques');

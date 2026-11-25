@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.19';
+const VERSION = 'v0.20';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -192,7 +192,8 @@ function notifs() {
       : '';
   return `<h1 class="title">Notifications</h1>${push}
     ${D.notifications.length ? `<ul class="list">${D.notifications.map((n) => `<li class="${n.read ? '' : 'unread'}"><img src="assets/i-bell.webp" alt="">
-      <div>${esc(n.body)}<small>${date(n.created_at)}</small></div></li>`).join('')}</ul>`
+      <div>${esc(n.body)}<small>${date(n.created_at)}</small></div>
+      <button type="button" class="notif-del" data-act="del-notif" data-id="${n.id}" aria-label="Supprimer la notification">${ico('close')}</button></li>`).join('')}</ul>`
       : empty('notifs', 'Tu seras prévenu ici quand quelqu’un réserve un cadeau sur un profil que tu as créé.')}`;
 }
 
@@ -392,6 +393,7 @@ const actions = {
       && !D.links.some((l) => l.profile_id === p.id && l.family_id !== f.id)).map((p) => p.name);
     if (confirm(`Supprimer « ${f.name} » pour tout le monde ?${only.length ? `\n\nSeront aussi supprimés avec leurs listes : ${only.join(', ')}.` : ''}`)) run(() => api.deleteFamily(f.id));
   },
+  'del-notif': (b) => run(() => api.deleteNotif(b.dataset.id)),
   'add-to-family': (b) => ($('#sheet').close(), run(() => api.addProfileToFamily(b.dataset.id, b.dataset.fid))),
   'share-list': (b) => share(`🎁 La liste de cadeaux de ${D.profiles.find((p) => p.id === b.dataset.id).name} sur Giftmas`, `${appUrl}#/p/${b.dataset.id}`),
   invite: (b) => { const f = D.families.find((f) => f.id === b.dataset.id); share(`🎄 Rejoins « ${f.name} » sur Giftmas pour nos listes de cadeaux ! Code : ${f.code}`, `${appUrl}?code=${f.code}`); },

@@ -174,6 +174,14 @@ reset role;
 select check_((select count(*) from giftmas.profiles where name = 'Cousin B') = 0, 'un profil qui n''était que dans cette famille est supprimé');
 set role authenticated;
 
+-- Supprimer ses notifications, pas celles des autres
+select as_user('22222222-2222-2222-2222-222222222222');
+delete from notifications;
+select as_user('11111111-1111-1111-1111-111111111111');
+select check_((select count(*) from notifications) = 1, 'on ne supprime pas les notifications des autres');
+delete from notifications;
+select check_((select count(*) from notifications) = 0, 'on supprime ses propres notifications');
+
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');
 do $$ begin
