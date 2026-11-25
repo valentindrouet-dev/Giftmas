@@ -3,12 +3,7 @@
   --accent: #c8102e; --green: #1d7a55; --gold: #e8b12f;
   --shadow: 0 2px 10px rgb(80 40 20 / .08);
   --pattern: url(assets/pattern-light.webp); --veil: rgb(251 245 236 / .8);
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #121419; --card: #1e222b; --ink: #f3ede4; --muted: #a59b90; --line: #2f3542;
-    --accent: #e0283f; --green: #2fae78; --gold: #f2c14e; --shadow: none;
-    --pattern: url(assets/pattern-dark.webp); --veil: rgb(18 20 25 / .82); }
+  color-scheme: light; /* thème clair imposé, même si l’appareil est en sombre */
 }
 * { box-sizing: border-box; margin: 0; }
 body {
