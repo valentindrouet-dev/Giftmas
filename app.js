@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.07';
+const VERSION = 'v0.08';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
 let D; // toutes les données visibles
@@ -28,7 +28,7 @@ async function start() {
     <header class="top">
       <a href="#/" class="brand"><img src="assets/hero-gift.webp" alt="">Giftmas <small class="version">${VERSION}</small></a>
       <nav>
-        <a href="#/journal" aria-label="Journal des cadeaux">${ico('journal')}</a>
+        <a href="#/boutiques" aria-label="Boutiques en ligne">${ico('journal')}</a>
         <a href="#/notifs" aria-label="Notifications">${ico('bell')}<b class="badge" hidden></b></a>
         <a href="#/familles" aria-label="Familles et réglages">${ico('family')}</a>
       </nav>
@@ -87,7 +87,7 @@ function login(code = '', create = false) {
 function render() {
   const [, page, id] = location.hash.split('/');
   const unread = D.notifications.filter((n) => !n.read).length;
-  $('#view').innerHTML = page === 'p' ? person(id) : page === 'journal' ? journal() : page === 'notifs' ? notifs() : page === 'familles' ? families() : home();
+  $('#view').innerHTML = page === 'p' ? person(id) : page === 'boutiques' ? shops() : page === 'notifs' ? notifs() : page === 'familles' ? families() : home();
   document.querySelectorAll('.top nav a').forEach((a) => a.toggleAttribute('aria-current', a.hash === `#/${page}`));
   const badge = $('.badge');
   badge.hidden = !unread;
@@ -145,16 +145,17 @@ function person(id) {
     ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : empty('gifts', 'Aucune idée pour l’instant.<br>Ajoute le premier cadeau avec le ＋ !')}`;
 }
 
-function journal() {
-  const rows = D.reservations.map((r) => {
-    const g = D.gifts.find((g) => g.id === r.gift_id);
-    return { r, g, p: D.profiles.find((p) => p.id === g?.profile_id) };
-  }).filter(({ p }) => p && inFilter(p.id)).sort((a, b) => b.r.created_at.localeCompare(a.r.created_at));
-  return `<h1 class="title">Journal des cadeaux</h1>${chips()}
-    ${rows.length ? `<ul class="list">${rows.map(({ r, g, p }) => `<li>${thumb(g)}<div>
-      <b>${esc(r.reserved_by)}</b> a réservé <b>${esc(g.name)}</b> pour <a href="#/p/${p.id}">${esc(p.name)}</a>
-      <small>${date(r.created_at)}${g.price != null ? ` · ${euro(g.price)}` : ''}</small></div></li>`).join('')}</ul>`
-      : empty('journal', 'Rien de réservé pour l’instant.')}`;
+const SHOPS = [
+  ['Amazon', 'amazon.fr', 'De tout'], ['Fnac', 'fnac.com', 'Livres, high-tech'], ['Darty', 'darty.com', 'Électroménager'],
+  ['Boulanger', 'boulanger.com', 'High-tech'], ['Cdiscount', 'cdiscount.com', 'De tout'], ['Cultura', 'cultura.com', 'Loisirs, livres'],
+  ['King Jouet', 'king-jouet.com', 'Jouets'], ['JouéClub', 'joueclub.fr', 'Jouets'], ['Decathlon', 'decathlon.fr', 'Sport'],
+  ['Sephora', 'sephora.fr', 'Beauté'], ['Nature & Découvertes', 'natureetdecouvertes.com', 'Idées cadeaux'], ['Etsy', 'etsy.com/fr', 'Fait main'],
+];
+function shops() {
+  return `<h1 class="title">Boutiques</h1>
+    <section class="people">${SHOPS.map(([name, site, what]) => `<a class="person" href="https://www.${site}" target="_blank" rel="noopener">
+      <span class="avatar" style="--c:hsl(${hue(name)} 55% 45%)" aria-hidden="true">${esc(name.slice(0, 1))}</span><b>${esc(name)}</b><small>${what}</small></a>`).join('')}
+    </section>`;
 }
 
 function notifs() {
@@ -226,16 +227,21 @@ const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
   <input type="hidden" name="${name}">`;
 
 // Titre, image et prix de la page produit, via Microlink (gratuit, ~50 liens/jour, sans clé).
-// Prix : balise d'Amazon (texte) ou balises standard des sites marchands (attribut content).
+// Prix : champs propres à Amazon d'abord, puis balises standard des sites marchands.
 async function preview(url) {
   const q = new URLSearchParams({
     url,
-    'data.priceText.selector': '#corePrice_feature_div .a-offscreen, .a-price .a-offscreen, [itemprop=price]',
-    'data.priceMeta.selector': 'meta[property="product:price:amount"], meta[property="og:price:amount"], [itemprop=price][content]',
-    'data.priceMeta.attr': 'content',
+    // du plus fiable au plus générique : un sélecteur large attrape parfois le prix d'un autre produit
+    'data.p1.selector': 'input[name="items[0.base][customerVisiblePrice][amount]"], #twister-plus-price-data-price',
+    'data.p1.attr': 'value',
+    'data.p2.selector': '#corePriceDisplay_desktop_feature_div .a-offscreen, #corePrice_feature_div .a-offscreen, #corePrice_desktop .a-offscreen',
+    'data.p3.selector': 'meta[property="product:price:amount"], meta[property="og:price:amount"], [itemprop=price][content]',
+    'data.p3.attr': 'content',
+    'data.p4.selector': '[itemprop=price]',
   });
   const { data } = await (await fetch(`https://api.microlink.io/?${q}`)).json();
-  return { image: data?.image?.url, title: data?.title, price: parsePrice(data?.priceMeta) ?? parsePrice(data?.priceText) };
+  const price = [data?.p1, data?.p2, data?.p3, data?.p4].map(parsePrice).find(Boolean) ?? null;
+  return { image: data?.image?.url, title: data?.title, price };
 }
 
 function newProfile() {

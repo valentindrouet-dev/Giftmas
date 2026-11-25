@@ -5,7 +5,7 @@ Listes de cadeaux partagées en famille : une vignette par personne, ses idées 
 - Connexion par pseudo + code famille, sans mot de passe
 - Plusieurs familles, et un même profil peut appartenir à plusieurs familles
 - « C'est moi » : la personne ne voit pas ce qu'on lui a réservé
-- Journal (qui a réservé quoi, pour qui, quand), partage WhatsApp et Messages
+- Raccourcis vers les principales boutiques en ligne, partage WhatsApp et Messages
 - Notifications au créateur du profil (« Thibaut a réservé LEGO Batman pour Richard »), dans l'app et en push sur le téléphone
 
 HTML/CSS/JS sans build, Supabase pour la base, le temps réel et le push.
@@ -77,4 +77,3 @@ node tests/smoke.mjs
 ## Bon à savoir
 - L'identité, c'est le pseudo : deux personnes avec le même pseudo partagent les mêmes droits. Utilisez des pseudos distincts.
 - Les photos sont réduites (≈ 30 Ko) et stockées directement en base. Ça suffit pour quelques centaines de cadeaux.
-- Décocher un cadeau retire aussi la ligne du journal.

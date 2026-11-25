@@ -42,9 +42,10 @@ assert.ok(await val.isDisabled('.gift:has-text("LEGO Batman") input'), 'Valentin
 await val.waitForSelector('.badge:has-text("2")');
 await val.click('[aria-label=Notifications]');
 await val.waitForSelector('text=Thibaut a réservé LEGO Batman pour Richard');
-await val.click('[aria-label="Journal des cadeaux"]');
-await val.waitForSelector('.list >> text=LEGO Batman');
-await snap(val, '3-journal');
+await val.click('[aria-label="Boutiques en ligne"]');
+await val.waitForSelector('.person >> text=Darty');
+assert.ok((await val.$$('.person[href^="https://www."]')).length >= 8, 'au moins 8 boutiques');
+await snap(val, '3-boutiques');
 
 // Valentin crée son propre profil : il ne voit pas ce qu'on lui réserve
 await val.click('.brand');
