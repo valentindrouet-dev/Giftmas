@@ -8,7 +8,9 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.05';
+const VERSION = 'v0.06';
+const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
+const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
 let D; // toutes les données visibles
 let filter = localStorage.getItem('giftmas-filter') || '';
 
@@ -24,11 +26,11 @@ async function start() {
   history.replaceState(null, '', location.pathname + location.hash);
   $('#app').innerHTML = `
     <header class="top">
-      <a href="#/" class="brand">🎁 Giftmas <small class="version">${VERSION}</small></a>
+      <a href="#/" class="brand"><img src="assets/hero-gift.webp" alt="">Giftmas <small class="version">${VERSION}</small></a>
       <nav>
-        <a href="#/journal" aria-label="Journal des cadeaux">📜</a>
-        <a href="#/notifs" aria-label="Notifications">🔔<b class="badge" hidden></b></a>
-        <a href="#/familles" aria-label="Familles et réglages">👪</a>
+        <a href="#/journal" aria-label="Journal des cadeaux">${ico('journal')}</a>
+        <a href="#/notifs" aria-label="Notifications">${ico('bell')}<b class="badge" hidden></b></a>
+        <a href="#/familles" aria-label="Familles et réglages">${ico('family')}</a>
       </nav>
     </header>
     ${DEMO ? '<p class="demo">Mode démo : données locales à ce navigateur</p>' : ''}
@@ -50,7 +52,7 @@ async function refresh() {
 function login(code = '', create = false) {
   $('#app').innerHTML = `
     <main class="login">
-      <div class="logo" aria-hidden="true">🎁</div>
+      <img class="logo" src="assets/hero-gift.webp" alt="">
       <h1>Giftmas <small class="version">${VERSION}</small></h1>
       <p>Les listes de cadeaux de la famille</p>
       <form id="login">
@@ -98,7 +100,7 @@ const inFilter = (profileId) => !filter || D.links.some((l) => l.profile_id === 
 const avatar = (p) => p.photo
   ? `<img class="avatar" src="${esc(p.photo)}" alt="">`
   : `<span class="avatar" style="--c:hsl(${hue(p.name)} 60% 50%)" aria-hidden="true">${esc(p.name.slice(0, 1).toUpperCase())}</span>`;
-const thumb = (g) => (g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : '<span class="ph" aria-hidden="true">🎁</span>');
+const thumb = (g) => (g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : '<img src="assets/gift-placeholder.webp" alt="">');
 
 const chips = () => D.families.length < 2 ? '' : `<div class="chips" role="group" aria-label="Filtrer par famille">
   ${[{ id: '', name: 'Tout le monde' }, ...D.families].map((f) =>
@@ -112,7 +114,7 @@ function home() {
     return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b><small>${info}</small></a>`;
   });
   return `${chips()}<section class="people">${people.join('')}
-    <button type="button" class="person add" data-act="new-profile"><span class="avatar" aria-hidden="true">＋</span><b>Ajouter</b><small>une personne</small></button>
+    <button type="button" class="person add" data-act="new-profile"><span class="avatar" aria-hidden="true">${ico('plus')}</span><b>Ajouter</b><small>une personne</small></button>
   </section>`;
 }
 
@@ -131,16 +133,16 @@ function person(id) {
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
           aria-label="${r ? `Réservé par ${esc(r.reserved_by)}` : `Je réserve ${esc(g.name)}`}"></label>`}</div>
       ${r ? `<span class="by">✓ ${byMe ? 'Moi' : esc(r.reserved_by)}</span>` : ''}
-      ${same(g.added_by, D.pseudo) || manage ? `<button type="button" class="del" data-act="del-gift" data-id="${g.id}" aria-label="Supprimer ${esc(g.name)}">×</button>` : ''}
+      ${same(g.added_by, D.pseudo) || manage ? `<button type="button" class="del" data-act="del-gift" data-id="${g.id}" aria-label="Supprimer ${esc(g.name)}">${ico('close')}</button>` : ''}
     </article>`;
   });
   return `<div class="phead">
-      <a class="icon-btn" href="#/" aria-label="Retour">‹</a>${avatar(p)}
+      <a class="icon-btn" href="#/" aria-label="Retour">${ico('back')}</a>${avatar(p)}
       <h1>${esc(p.name)}${mine ? '<small>Ta liste · les réservations te sont cachées 🤫</small>' : ''}</h1>
-      <button type="button" class="icon-btn add" data-act="new-gift" data-id="${p.id}" aria-label="Ajouter un cadeau">＋</button>
-      <button type="button" class="icon-btn" data-act="profile-menu" data-id="${p.id}" aria-label="Options du profil">⋯</button>
+      <button type="button" class="icon-btn" data-act="new-gift" data-id="${p.id}" aria-label="Ajouter un cadeau">${ico('plus')}</button>
+      <button type="button" class="icon-btn" data-act="profile-menu" data-id="${p.id}" aria-label="Options du profil">${ico('more')}</button>
     </div>
-    ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : '<p class="empty">Aucune idée pour l’instant.<br>Ajoute le premier cadeau !</p>'}`;
+    ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : empty('gifts', 'Aucune idée pour l’instant.<br>Ajoute le premier cadeau avec le ＋ !')}`;
 }
 
 function journal() {
@@ -152,26 +154,26 @@ function journal() {
     ${rows.length ? `<ul class="list">${rows.map(({ r, g, p }) => `<li>${thumb(g)}<div>
       <b>${esc(r.reserved_by)}</b> a réservé <b>${esc(g.name)}</b> pour <a href="#/p/${p.id}">${esc(p.name)}</a>
       <small>${date(r.created_at)}${g.price != null ? ` · ${euro(g.price)}` : ''}</small></div></li>`).join('')}</ul>`
-      : '<p class="empty">Rien de réservé pour l’instant.</p>'}`;
+      : empty('journal', 'Rien de réservé pour l’instant.')}`;
 }
 
 function notifs() {
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const push = 'PushManager' in window && VAPID_PUBLIC_KEY && !DEMO
-    ? '<button type="button" class="btn green" data-act="enable-push">🔔 Recevoir les notifications sur cet appareil</button>'
+    ? `<button type="button" class="btn green" data-act="enable-push">${ico('bell')} Recevoir les notifications sur cet appareil</button>`
     : /iPhone|iPad/.test(navigator.userAgent) && !standalone
       ? '<p class="card">Pour recevoir les notifications sur iPhone : bouton Partager ⎋ puis « Sur l’écran d’accueil », et ouvre Giftmas depuis l’icône.</p>'
       : '';
   return `<h1 class="title">Notifications</h1>${push}
-    ${D.notifications.length ? `<ul class="list">${D.notifications.map((n) => `<li class="${n.read ? '' : 'unread'}"><span class="ph" aria-hidden="true">🎁</span>
+    ${D.notifications.length ? `<ul class="list">${D.notifications.map((n) => `<li class="${n.read ? '' : 'unread'}"><img src="assets/i-bell.webp" alt="">
       <div>${esc(n.body)}<small>${date(n.created_at)}</small></div></li>`).join('')}</ul>`
-      : '<p class="empty">Tu seras prévenu ici quand quelqu’un réserve un cadeau sur un profil que tu as créé.</p>'}`;
+      : empty('notifs', 'Tu seras prévenu ici quand quelqu’un réserve un cadeau sur un profil que tu as créé.')}`;
 }
 
 function families() {
   return `<h1 class="title">Familles</h1>
     ${D.families.map((f) => `<div class="card fam"><div><b>${esc(f.name)}</b><small>Code : <span class="code">${esc(f.code)}</span></small></div>
-      <button type="button" class="btn small" data-act="invite" data-id="${f.id}">Inviter</button></div>`).join('')}
+      <button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button></div>`).join('')}
     <form class="card stack" data-form="join"><label>Rejoindre une autre famille<input name="code" required maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="Code"></label><button class="btn">Rejoindre</button></form>
     <form class="card stack" data-form="create"><label>Créer une nouvelle famille<input name="name" required maxlength="60" placeholder="Famille Martin"></label><button class="btn ghost">Créer</button></form>
     <p class="card">Connecté en tant que <b>${esc(D.pseudo)}</b>. <button type="button" class="link" data-act="logout">Se déconnecter</button></p>`;
@@ -219,7 +221,7 @@ function imagePicker(form, name) {
   return (src) => { link.value = src; set(src); };
 }
 const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
-  <label class="btn ghost small">📷 ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label></div>
+  <label class="btn ghost small">${ico('camera')} ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label></div>
   <input name="${name}-url" inputmode="url" autocomplete="off" aria-label="Adresse web de l’image" placeholder="ou colle l’adresse d’une image (https://…)">
   <input type="hidden" name="${name}">`;
 
@@ -289,7 +291,7 @@ function profileMenu(id) {
   const others = D.families.filter((f) => !D.links.some((l) => l.profile_id === id && l.family_id === f.id));
   sheet(`<h2>${esc(p.name)}</h2>
     ${others.map((f) => `<button type="button" class="btn ghost" data-act="add-to-family" data-id="${id}" data-fid="${f.id}">Ajouter aussi à ${esc(f.name)}</button>`).join('')}
-    <button type="button" class="btn ghost" data-act="share-list" data-id="${id}">Partager cette liste</button>
+    <button type="button" class="btn ghost" data-act="share-list" data-id="${id}">${ico('share')} Partager cette liste</button>
     ${same(p.created_by, D.pseudo) ? `<button type="button" class="btn danger" data-act="del-profile" data-id="${id}">Supprimer ce profil</button>` : ''}
     <button class="btn ghost" value="cancel">Fermer</button>`, () => {});
 }
