@@ -127,6 +127,24 @@ do $$ begin
 exception when raise_exception then if sqlerrm <> 'Non autorisé' then raise; end if; end $$;
 select check_(true, 'un autre membre ne peut pas modifier le profil');
 
+-- Modifier un cadeau
+select as_user('22222222-2222-2222-2222-222222222222');
+do $$ begin
+  perform update_gift((select id from gifts where name = 'Livre Astérix'), 'Pirate', 1, null, null);
+  raise exception 'cadeau modifié par un autre';
+exception when raise_exception then if sqlerrm <> 'Non autorisé' then raise; end if; end $$;
+select check_(true, 'un autre membre ne peut pas modifier un cadeau');
+select update_gift((select id from gifts where name = 'Pull moche'), 'Pull très moche', 25, 'https://exemple.fr/pull', null);
+select check_((select price from gifts where name = 'Pull très moche') = 25, 'celui qui a ajouté le cadeau le modifie');
+select as_user('11111111-1111-1111-1111-111111111111');
+select update_gift((select id from gifts where name = 'Livre Astérix'), 'Astérix chez les Pictes', 13.5, null, null);
+select check_((select count(*) from gifts where name = 'Astérix chez les Pictes') = 1, 'le gestionnaire du profil modifie un cadeau');
+do $$ begin
+  perform update_gift((select id from gifts where name = 'Astérix chez les Pictes'), 'X', 1, 'javascript:alert(1)', null);
+  raise exception 'lien dangereux accepté';
+exception when check_violation then null; end $$;
+select check_(true, 'un lien non http(s) est refusé');
+
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');
 do $$ begin

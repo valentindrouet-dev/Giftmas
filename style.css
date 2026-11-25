@@ -107,6 +107,8 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 /* Grille de cadeaux : 3 colonnes sur iPhone, 9 visibles sans défiler */
 .gifts { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .gift { position: relative; display: flex; flex-direction: column; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s; }
+/* pas d'aperçu de lien iOS ni de sélection de texte sur appui long */
+.gift { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
 .gift-link img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
 .gift-name { padding: 5px 7px 0; font-size: 12.5px; line-height: 1.25; font-weight: 600; min-height: calc(2.5em + 5px);

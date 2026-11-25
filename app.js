@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.12';
+const VERSION = 'v0.13';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -135,7 +135,7 @@ function person(id) {
     const r = D.reservations.find((r) => r.gift_id === g.id);
     const byMe = r && same(r.reserved_by, D.pseudo);
     const inner = `${thumb(g)}<span class="gift-name">${esc(g.name)}</span>`;
-    return `<article class="gift${r ? ' taken' : ''}">
+    return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}">
       ${g.url ? `<a class="gift-link" href="${esc(g.url)}" target="_blank" rel="noopener" aria-label="Acheter ${esc(g.name)}">${inner}</a>` : `<div class="gift-link">${inner}</div>`}
       <div class="gift-foot"><span class="price">${euro(g.price)}</span>
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
@@ -302,20 +302,22 @@ function newProfile() {
 
 const withScheme = (u) => (u = u.trim()) && !/^https?:\/\//i.test(u) ? `https://${u}` : u || null;
 
-function newGift(profileId) {
-  const form = sheet(`<h2>Nouveau cadeau</h2>
-    <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="https://"></label>
-    <label>Nom<input name="name" required maxlength="120"></label>
-    <label>Prix (€)<input name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" placeholder="29,90"></label>
+// Formulaire d'ajout, ou de modification quand on passe un cadeau existant.
+function newGift(profileId, g = null) {
+  const form = sheet(`<h2>${g ? 'Modifier le cadeau' : 'Nouveau cadeau'}</h2>
+    <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="https://" value="${esc(g?.url)}"></label>
+    <label>Nom<input name="name" required maxlength="120" value="${esc(g?.name)}"></label>
+    <label>Prix (€)<input name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" placeholder="29,90" value="${g?.price != null ? String(g.price).replace('.', ',') : ''}"></label>
     ${imageField('image', 'Image ou photo')}
-    <div class="row">${cancel}<button class="btn">Ajouter</button></div>`,
+    <div class="row">${cancel}<button class="btn">${g ? 'Enregistrer' : 'Ajouter'}</button></div>`,
   async (f) => {
-    const url = withScheme(f.get('url'));
     const price = f.get('price').trim();
-    await api.addGift({ profile_id: profileId, name: f.get('name').trim(), price: price ? Number(price.replace(',', '.')) : null, url: url || null, image: f.get('image') || null });
+    const data = { name: f.get('name').trim(), price: price ? Number(price.replace(',', '.')) : null, url: withScheme(f.get('url')) || null, image: f.get('image') || null };
+    await (g ? api.updateGift({ id: g.id, ...data }) : api.addGift({ profile_id: profileId, ...data }));
     await refresh();
   });
   const setImage = imagePicker(form, 'image');
+  if (g?.image) setImage(g.image);
   // Pré-remplit nom et image depuis la page produit quand le site le permet.
   form.url.onchange = async () => {
     const url = withScheme(form.url.value);
@@ -390,6 +392,32 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (b) actions[b.dataset.act](b);
 });
+
+// Appui long (½ s) sur une vignette de cadeau : modification, pour qui a le droit de la supprimer.
+let pressTimer, pressed;
+document.addEventListener('pointerdown', (e) => {
+  const tile = e.target.closest('.gift');
+  if (!tile || e.target.closest('.check, .del')) return;
+  const start = [e.clientX, e.clientY];
+  pressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => { pressed = true; editGift(tile.dataset.id); }, 500);
+  const cancelPress = (ev) => {
+    if (ev.type === 'pointermove' && Math.hypot(ev.clientX - start[0], ev.clientY - start[1]) < 10) return;
+    clearTimeout(pressTimer);
+    removeEventListener('pointermove', cancelPress); removeEventListener('pointerup', cancelPress); removeEventListener('pointercancel', cancelPress);
+  };
+  addEventListener('pointermove', cancelPress); addEventListener('pointerup', cancelPress); addEventListener('pointercancel', cancelPress);
+});
+// le relâchement d'un appui long ne doit pas ouvrir le lien d'achat
+document.addEventListener('click', (e) => { if (pressed && e.target.closest('.gift')) { e.preventDefault(); e.stopPropagation(); pressed = false; } }, true);
+document.addEventListener('contextmenu', (e) => { if (e.target.closest('.gift')) e.preventDefault(); });
+function editGift(id) {
+  const g = D.gifts.find((g) => g.id === id), p = D.profiles.find((p) => p.id === g.profile_id);
+  if (!(same(g.added_by, D.pseudo) || canManage(p))) return toast(`Seul ${g.added_by} ou le gestionnaire de ${p.name} peut modifier ce cadeau`);
+  navigator.vibrate?.(15);
+  newGift(g.profile_id, g);
+}
 
 document.addEventListener('change', async (e) => {
   if (e.target.matches('[data-sort]')) { sort = e.target.value; localStorage.setItem('giftmas-sort', sort); return render(); }

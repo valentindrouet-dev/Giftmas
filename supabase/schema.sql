@@ -173,6 +173,19 @@ begin
     raise exception 'Le profil doit rester dans au moins une famille';
   end if;
 end $$;
+-- Modifier un cadeau : celui qui l'a ajouté ou le gestionnaire du profil (mêmes droits que la suppression).
+create or replace function update_gift(p_gift uuid, p_name text, p_price numeric, p_url text, p_image text) returns void
+language plpgsql security definer set search_path = giftmas as $$
+declare g gifts;
+begin
+  select * into g from gifts where id = p_gift;
+  if g.id is null or not can_see_profile(g.profile_id)
+     or not (same(g.added_by, my_pseudo()) or can_manage_profile(g.profile_id)) then
+    raise exception 'Non autorisé';
+  end if;
+  update gifts set name = trim(p_name), price = p_price, url = p_url, image = p_image where id = p_gift;
+end $$;
+
 -- ───────────── Notification au créateur du profil à chaque réservation ─────────────
 create function notify_reservation() returns trigger language plpgsql security definer set search_path = giftmas as $$
 declare g gifts; p profiles;

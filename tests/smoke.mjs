@@ -86,8 +86,23 @@ const names = await val.$$eval('.person b', (b) => b.map((x) => x.textContent));
 assert.deepEqual(names.sort(), ['Ajouter', 'Léa', 'Mamie Jo'], 'le filtre ne montre que la belle-famille');
 await snap(val, '5-filtre');
 
-// Tri par prix, puis modification d'un membre depuis Familles (âge, prénom)
+// Appui long sur une vignette : modification du cadeau
+await val.click('[aria-label=Accueil]');
 await val.click('.chip:has-text("Tout le monde")');
+await val.click('.person:has-text("Richard")');
+await val.waitForSelector('.gift:has-text("Livre Astérix")');
+await val.waitForTimeout(400);
+const box = await val.locator('.gift:has-text("Livre Astérix") .gift-name').boundingBox();
+await val.mouse.move(box.x + 5, box.y + 5); await val.mouse.down(); await val.waitForTimeout(700); await val.mouse.up();
+await val.waitForSelector('#sheet h2:has-text("Modifier le cadeau")');
+assert.equal(await val.inputValue('#sheet input[name=price]'), '12,5', 'le formulaire est prérempli');
+await val.fill('#sheet input[name=price]', '13,90');
+await val.click('#sheet >> text=Enregistrer');
+await val.waitForSelector('.gift:has-text("Livre Astérix") .price:has-text("13,90")');
+assert.equal(val.url().includes('#/p/'), true, 'l’appui long n’a pas ouvert le lien d’achat');
+
+// Tri par prix, puis modification d'un membre depuis Familles (âge, prénom)
+await val.click('[aria-label=Accueil]');
 await val.click('.person:has-text("Richard")');
 await val.selectOption('[data-sort]', 'price-asc');
 assert.equal((await val.textContent('.gift .gift-name')).trim(), 'Livre Astérix', 'le moins cher en premier');

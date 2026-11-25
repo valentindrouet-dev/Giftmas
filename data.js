@@ -46,6 +46,7 @@ async function supabaseApi() {
     updateProfile: async (p) => ok(await sb.rpc('update_profile', { p_profile: p.id, p_name: p.name, p_photo: p.photo, p_note: p.note, p_birth_year: p.birthYear, p_families: p.families })),
     addGift: async (g) => ok(await sb.from('gifts').insert({ ...g, added_by: pseudo })),
     deleteGift: async (id) => ok(await sb.from('gifts').delete().eq('id', id)),
+    updateGift: async (g) => ok(await sb.rpc('update_gift', { p_gift: g.id, p_name: g.name, p_price: g.price, p_url: g.url, p_image: g.image })),
     reserve: async (id) => ok(await sb.from('reservations').insert({ gift_id: id, reserved_by: pseudo })),
     unreserve: async (id) => ok(await sb.from('reservations').delete().eq('gift_id', id)),
     markRead: async () => ok(await sb.from('notifications').update({ read: true }).eq('read', false)),
@@ -115,6 +116,7 @@ function demoApi() {
       s.links = s.links.filter((l) => l.profile_id !== u.id || !mineF.includes(l.family_id)).concat(u.families.map((fid) => ({ profile_id: u.id, family_id: fid })));
     }),
     addGift: async (g) => mut((s) => s.gifts.push({ ...g, id: crypto.randomUUID(), added_by: me(), created_at: now() })),
+    updateGift: async (u) => mut((s) => Object.assign(s.gifts.find((g) => g.id === u.id), { name: u.name, price: u.price, url: u.url, image: u.image })),
     deleteGift: async (id) => mut((s) => { s.gifts = s.gifts.filter((g) => g.id !== id); s.reservations = s.reservations.filter((r) => r.gift_id !== id); }),
     reserve: async (id) => mut((s) => {
       if (s.reservations.some((r) => r.gift_id === id)) fail('Déjà réservé par quelqu’un d’autre !');
