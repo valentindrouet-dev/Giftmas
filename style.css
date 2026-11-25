@@ -9,7 +9,10 @@
 * { box-sizing: border-box; margin: 0; }
 /* en mode app iOS, la zone de la barre d'état reprend le rouge de l'en-tête (et le crème en bas) */
 /* rouge derrière la barre d'état, crème sous le contenu (pas de bande rouge en bas) */
-html { background: linear-gradient(#c8102e 50%, #fbf5ec 50%); }
+/* fond rouge UNI : iOS en tire la couleur de la barre d'état en mode app (un dégradé ramène le halo blanc) */
+html { background-color: #c8102e; }
+/* le crème et ses flocons : calque fixe qui couvre tout l'écran, sans bande rouge en bas */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(var(--veil), var(--veil)), var(--pattern) 0 0 / 300px; background-color: var(--bg); }
 body {
   font: 16px/1.35 system-ui, -apple-system, sans-serif; color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -47,7 +50,7 @@ main { padding: 12px 8px calc(24px + env(safe-area-inset-bottom)); max-width: 90
 .title { font-size: 24px; margin: 4px 0 12px; }
 
 /* Filtre familles */
-#app { min-height: 100dvh; background: linear-gradient(var(--veil), var(--veil)), var(--pattern) 0 0 / 300px; background-color: var(--bg); }
+#app { min-height: 100dvh; }
 /* une seule ligne qui défile */
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
@@ -115,7 +118,7 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .gift { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .gift-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
-.gift-link img { width: 100%; aspect-ratio: 6 / 5; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
+.gift-link img { width: 100%; aspect-ratio: 6 / 5; object-fit: cover; display: grid; place-items: center; background: #fff; font-size: 30px; } /* fond blanc sous les images transparentes */
 .gift-foot { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding-left: 7px; }
 .price { font: 600 15px Fredoka, system-ui, sans-serif; color: var(--green); }
 .check { display: grid; place-items: center; width: 44px; height: 38px; cursor: pointer; }
