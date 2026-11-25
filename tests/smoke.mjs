@@ -94,6 +94,15 @@ const names = await val.$$eval('.person b', (b) => b.map((x) => x.textContent));
 assert.deepEqual(names.sort(), ['Ajouter', 'Léa', 'Mamie Jo'], 'le filtre ne montre que la belle-famille');
 await snap(val, '5-filtre');
 
+// Supprimer une famille créée par soi
+await val.click('[aria-label="Familles et réglages"]');
+await val.fill('[data-form=create] input', 'Famille test');
+await val.click('[data-form=create] button');
+await val.waitForSelector('.card:has-text("Famille test")');
+val.once('dialog', (d) => d.accept());
+await val.click('.card:has-text("Famille test") [data-act=del-family]');
+await val.waitForSelector('.card:has-text("Famille test")', { state: 'detached' });
+
 // Appui long sur une vignette : modification du cadeau
 await val.click('[aria-label=Accueil]');
 await val.click('.chip:has-text("Tout le monde")');

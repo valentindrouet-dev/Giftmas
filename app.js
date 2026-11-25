@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.14';
+const VERSION = 'v0.15';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -201,7 +201,8 @@ function families() {
     ${D.families.map((f) => {
       const members = D.profiles.filter((p) => D.links.some((l) => l.profile_id === p.id && l.family_id === f.id));
       return `<div class="card"><div class="fam"><div><b>${esc(f.name)}</b><small>Code : <span class="code">${esc(f.code)}</span></small></div>
-        <button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button></div>
+        <div class="fam-actions"><button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button>
+        ${!f.created_by || same(f.created_by, D.pseudo) ? `<button type="button" class="link danger-link" data-act="del-family" data-id="${f.id}">Supprimer</button>` : ''}</div></div>
         <div class="members">${members.map((p) => canManage(p)
           ? `<button type="button" data-act="edit-profile" data-id="${p.id}">${avatar(p)}<span>${esc(p.name)} ✎</span></button>`
           : `<a href="#/p/${p.id}">${avatar(p)}<span>${esc(p.name)}</span></a>`).join('') || '<small>Personne pour l’instant</small>'}</div></div>`;
@@ -382,6 +383,12 @@ const actions = {
   'profile-menu': (b) => profileMenu(b.dataset.id),
   'del-gift': (b) => confirm('Supprimer ce cadeau (et sa réservation) ?') && run(() => api.deleteGift(b.dataset.id)),
   'del-profile': (b) => confirm('Supprimer ce profil et tous ses cadeaux ?') && ($('#sheet').close(), location.hash = '#/', run(() => api.deleteProfile(b.dataset.id))),
+  'del-family': (b) => {
+    const f = D.families.find((f) => f.id === b.dataset.id);
+    const only = D.profiles.filter((p) => D.links.some((l) => l.profile_id === p.id && l.family_id === f.id)
+      && !D.links.some((l) => l.profile_id === p.id && l.family_id !== f.id)).map((p) => p.name);
+    if (confirm(`Supprimer « ${f.name} » pour tout le monde ?${only.length ? `\n\nSeront aussi supprimés avec leurs listes : ${only.join(', ')}.` : ''}`)) run(() => api.deleteFamily(f.id));
+  },
   'add-to-family': (b) => ($('#sheet').close(), run(() => api.addProfileToFamily(b.dataset.id, b.dataset.fid))),
   'share-list': (b) => share(`🎁 La liste de cadeaux de ${D.profiles.find((p) => p.id === b.dataset.id).name} sur Giftmas`, `${appUrl}#/p/${b.dataset.id}`),
   invite: (b) => { const f = D.families.find((f) => f.id === b.dataset.id); share(`🎄 Rejoins « ${f.name} » sur Giftmas pour nos listes de cadeaux ! Code : ${f.code}`, `${appUrl}?code=${f.code}`); },

@@ -31,6 +31,7 @@ async function supabaseApi() {
     logout: () => sb.auth.signOut(),
     joinFamily: async (code) => ok(await sb.rpc('join_family', { p_code: code })),
     createFamily: async (name) => ok(await sb.rpc('create_family', { p_name: name })),
+    deleteFamily: async (id) => ok(await sb.rpc('delete_family', { p_family: id })),
     async load() {
       const q = (t) => sb.from(t).select('*');
       const [families, profiles, links, gifts, reservations, notifications] = (await Promise.all([
@@ -99,7 +100,16 @@ function demoApi() {
     async login(name) { sessionStorage.setItem('giftmas-demo-pseudo', name); },
     async logout() { sessionStorage.removeItem('giftmas-demo-pseudo'); },
     joinFamily: async (code) => mut((s) => { const f = s.families.find((f) => f.code === code.trim().toUpperCase()) ?? fail('Code famille inconnu'); join(s, f); return f; }),
-    createFamily: async (name) => mut((s) => { const f = { id: crypto.randomUUID(), name, code: Math.random().toString(36).slice(2, 8).toUpperCase() }; s.families.push(f); join(s, f); return f; }),
+    createFamily: async (name) => mut((s) => { const f = { id: crypto.randomUUID(), name, created_by: me(), code: Math.random().toString(36).slice(2, 8).toUpperCase() }; s.families.push(f); join(s, f); return f; }),
+    deleteFamily: async (id) => mut((s) => {
+      const f = s.families.find((f) => f.id === id);
+      if (f.created_by && !same(f.created_by, me())) fail('Seul le créateur de la famille peut la supprimer');
+      const members = s.links.filter((l) => l.family_id === id).map((l) => l.profile_id);
+      s.families = s.families.filter((f) => f.id !== id);
+      s.links = s.links.filter((l) => l.family_id !== id);
+      s.memberships = s.memberships.filter((m) => m.family_id !== id);
+      s.profiles = s.profiles.filter((p) => !members.includes(p.id) || s.links.some((l) => l.profile_id === p.id));
+    }),
     load: async () => view(get()),
     createProfile: async (p) => mut((s) => {
       const id = crypto.randomUUID();

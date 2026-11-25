@@ -145,6 +145,35 @@ do $$ begin
 exception when check_violation then null; end $$;
 select check_(true, 'un lien non http(s) est refusé');
 
+-- Profils à cheval sur deux familles : chacun ne voit que les profils de ses familles
+select as_user('11111111-1111-1111-1111-111111111111');
+select create_family('Famille B');
+select create_profile('Enfant A+B', null, false, array['00000000-0000-0000-0000-0000000000f1'::uuid, (select id from families where name = 'Famille B')]);
+select create_profile('Cousin B', null, false, array[(select id from families where name = 'Famille B')]);
+select set_config('test.code_b', (select code from families where name = 'Famille B'), false); -- le code se transmet hors de l'app
+select as_user('55555555-5555-5555-5555-555555555555');
+insert into app_users (pseudo) values ('Tata B');
+select join_family(current_setting('test.code_b'));
+select check_((select string_agg(name, ',' order by name) from profiles) = 'Cousin B,Enfant A+B', 'un membre de B voit l''enfant A+B et le cousin B, pas les profils de A');
+select as_user('22222222-2222-2222-2222-222222222222');
+select check_((select count(*) from profiles where name = 'Enfant A+B') = 1 and (select count(*) from profiles where name = 'Cousin B') = 0,
+              'un membre de A voit l''enfant A+B mais pas le cousin de B');
+
+-- Supprimer une famille
+select as_user('55555555-5555-5555-5555-555555555555');
+do $$ begin
+  perform delete_family((select id from families where name = 'Famille B'));
+  raise exception 'suppression par un non-créateur acceptée';
+exception when raise_exception then if sqlerrm <> 'Seul le créateur de la famille peut la supprimer' then raise; end if; end $$;
+select check_(true, 'seul le créateur supprime la famille');
+select as_user('11111111-1111-1111-1111-111111111111');
+select delete_family((select id from families where name = 'Famille B'));
+select check_((select count(*) from families where name = 'Famille B') = 0, 'le créateur supprime la famille');
+select check_((select count(*) from profiles where name = 'Enfant A+B') = 1, 'un profil présent dans une autre famille est conservé');
+reset role;
+select check_((select count(*) from giftmas.profiles where name = 'Cousin B') = 0, 'un profil qui n''était que dans cette famille est supprimé');
+set role authenticated;
+
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');
 do $$ begin

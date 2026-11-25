@@ -7,6 +7,8 @@
   color-scheme: light; /* thème clair imposé, même si l’appareil est en sombre */
 }
 * { box-sizing: border-box; margin: 0; }
+/* en mode app iOS, la zone de la barre d'état reprend le rouge de l'en-tête (et le crème en bas) */
+html { background: linear-gradient(#c8102e 50%, #fbf5ec 50%); }
 body {
   font: 16px/1.35 system-ui, -apple-system, sans-serif; color: var(--ink); min-height: 100dvh;
   background: linear-gradient(var(--veil), var(--veil)), var(--pattern) 0 0 / 300px;
@@ -26,8 +28,6 @@ a { color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 6px; color: #fff; text-decoration: none; font-size: 22px; }
 .brand img { width: 34px; height: 34px; object-fit: contain; }
-/* guirlande sous la barre rouge (décor, ne capte pas les touchers) */
-.top::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 26px; background: url(assets/garland.webp) 0 0 / auto 26px repeat-x; pointer-events: none; }
 .ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
 .version { font: 500 12px system-ui, sans-serif; opacity: .75; }
 .top nav { display: flex; gap: 2px; }
@@ -41,7 +41,7 @@ a { color: inherit; }
 .demo { background: var(--gold); color: #2a1f1a; font-size: 13px; text-align: center; padding: 4px; }
 /* pastille flottante : n'occupe pas de place, la mise en page démo = la vraie */
 .top + .demo { position: fixed; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 6; padding: 3px 10px; border-radius: 99px; font-size: 11px; opacity: .9; pointer-events: none; }
-main { padding: 30px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 900px; margin: auto; }
+main { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 900px; margin: auto; }
 .title { font-size: 24px; margin: 4px 0 12px; }
 
 /* Filtre familles */
@@ -194,3 +194,5 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .pop.above::before { top: auto; bottom: -18px; border-color: #3b2a20 transparent transparent; }
 .pop.above::after { top: auto; bottom: -15px; border-color: var(--card) transparent transparent; }
 .pop .btn { text-decoration: none; }
+.fam-actions { display: grid; justify-items: end; gap: 2px; }
+.danger-link { color: var(--accent); font-size: 13px; padding: 4px; }
