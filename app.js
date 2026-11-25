@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.16';
+const VERSION = 'v0.17';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -104,7 +104,7 @@ const avatar = (p) => p.photo
   : `<span class="avatar" style="--c:hsl(${hue(p.name)} 60% 50%)" aria-hidden="true">${esc(p.name.slice(0, 1).toUpperCase())}</span>`;
 const famNames = (pid) => D.families.filter((f) => D.links.some((l) => l.profile_id === pid && l.family_id === f.id)).map((f) => esc(f.name)).join(' · ');
 const age = (p) => (p.birth_year ? `${new Date().getFullYear() - p.birth_year} ans` : '');
-const giftIco = (cls = '') => `<img class="gift-ico ${cls}" src="assets/hero-gift.webp" alt="">`;
+const giftIco = (name) => `<img class="gift-ico" src="assets/${name}.webp" alt="">`; // i-idea : idées, hero-gift : réservés
 const thumb = (g) => (g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : '<img src="assets/gift-placeholder.webp" alt="">');
 
 const chips = () => D.families.length < 2 ? '' : `<div class="chips" role="group" aria-label="Filtrer par famille">
@@ -116,8 +116,8 @@ function home() {
     const gifts = D.gifts.filter((g) => g.profile_id === p.id);
     const taken = gifts.filter((g) => D.reservations.some((r) => r.gift_id === g.id)).length;
     const counts = same(p.owner, D.pseudo)
-      ? `<span class="counts" aria-label="${gifts.length} idées">${gifts.length} ${giftIco()}</span>`
-      : `<span class="counts" aria-label="${gifts.length - taken} disponibles, ${taken} réservés">${gifts.length - taken} ${giftIco()} <i>|</i> ${taken} ${giftIco('off')}</span>`;
+      ? `<span class="counts" aria-label="${gifts.length} idées">${gifts.length} ${giftIco('i-idea')}</span>`
+      : `<span class="counts" aria-label="${gifts.length - taken} disponibles, ${taken} réservés">${gifts.length - taken} ${giftIco('i-idea')} <i>|</i> ${taken} ${giftIco('hero-gift')}</span>`;
     return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b>${counts}</a>`;
   });
   return `${chips()}<section class="people">${people.join('')}
