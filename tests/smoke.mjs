@@ -8,6 +8,8 @@ const URL = 'http://localhost:8123/';
 const shots = process.argv[2];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+// Force le mode démo, quelle que soit la config du repo.
+await ctx.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = ''; export const VAPID_PUBLIC_KEY = '';" }));
 const snap = (page, name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 
 async function loginAs(pseudo, code = 'NOEL24') {
@@ -55,9 +57,12 @@ await val.click('[aria-label="Ajouter un cadeau"]');
 await val.fill('#sheet input[name=url]', 'fnac.com/velo');
 await val.fill('#sheet input[name=name]', 'Vélo');
 await val.fill('#sheet input[name=price]', '199,90');
+await val.fill('#sheet input[name=image-url]', 'https://example.com/velo.jpg');
+await val.dispatchEvent('#sheet input[name=image-url]', 'change');
 await val.click('#sheet >> text=Ajouter');
 await val.waitForSelector('.gift:has-text("Vélo")');
 assert.equal(await val.getAttribute('.gift:has-text("Vélo") a', 'href'), 'https://fnac.com/velo');
+assert.equal(await val.getAttribute('.gift:has-text("Vélo") img', 'src'), 'https://example.com/velo.jpg', 'image par adresse web');
 assert.equal(await val.$('.gift:has-text("Vélo") input'), null, 'pas de case à cocher sur sa propre liste');
 await snap(val, '4-ma-liste');
 

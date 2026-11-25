@@ -54,12 +54,11 @@ npx supabase login
 npx supabase link --project-ref <ref-du-projet>
 npx supabase secrets set GIFTMAS_VAPID_PUBLIC_KEY=<publique> GIFTMAS_VAPID_PRIVATE_KEY=<privée> GIFTMAS_VAPID_SUBJECT=mailto:<ton-email>
 npx supabase functions deploy giftmas-push
-npx supabase functions deploy giftmas-preview
 ```
 
 Enfin, **Database > Webhooks > Create** : table `giftmas.notifications`, événement `Insert`, type **Supabase Edge Functions**, fonction `giftmas-push`.
 
-`giftmas-preview` est facultative : elle pré-remplit le nom et l'image depuis le lien produit. Amazon la bloque souvent, il suffit alors d'ajouter une photo.
+Le nom et l'image d'un cadeau sont pré-remplis depuis le lien produit grâce à [Microlink](https://microlink.io) (gratuit, environ 50 liens par jour). Si ça échoue, ajoute une photo ou colle l'adresse d'une image.
 
 ### 4. Sur iPhone
 Safari > Partager > **Sur l'écran d'accueil**, puis ouvre Giftmas depuis l'icône. Dans 🔔, touche **Recevoir les notifications**. Chaque personne qui veut le push sur son téléphone doit faire cette manip ; les autres voient leurs notifications dans l'app.

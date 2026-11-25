@@ -200,18 +200,32 @@ async function shrink(file, max = 400) {
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.75);
 }
-// Champ image : fichier, appareil photo (proposé par iOS), ou image collée.
+// Champ image : fichier, appareil photo (proposé par iOS), image collée, ou adresse web d'une image.
 function imagePicker(form, name) {
-  const input = $(`input[name="${name}-file"]`, form), out = $(`input[name="${name}"]`, form), preview = $('.img-pick img', form);
+  const input = $(`input[name="${name}-file"]`, form), link = $(`input[name="${name}-url"]`, form);
+  const out = $(`input[name="${name}"]`, form), preview = $('.img-pick img', form);
   const set = (src) => { out.value = src; preview.src = src; preview.hidden = !src; };
-  const take = async (file) => file?.type.startsWith('image/') && set(await shrink(file).catch(() => ''));
+  const take = async (file) => file?.type.startsWith('image/') && (link.value = '', set(await shrink(file).catch(() => '')));
   input.onchange = () => take(input.files[0]);
   form.addEventListener('paste', (e) => take(e.clipboardData.files[0]));
-  return set;
+  preview.onerror = () => { preview.hidden = true; };
+  link.onchange = () => {
+    const v = link.value.trim();
+    if (v && !/^https:\/\//i.test(v)) return toast('L’adresse de l’image doit commencer par https://');
+    set(v);
+  };
+  return (src) => { link.value = src; set(src); };
 }
 const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
-  <label class="btn ghost small">📷 ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label>
-  <input type="hidden" name="${name}"></div>`;
+  <label class="btn ghost small">📷 ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label></div>
+  <input name="${name}-url" inputmode="url" autocomplete="off" aria-label="Adresse web de l’image" placeholder="ou colle l’adresse d’une image (https://…)">
+  <input type="hidden" name="${name}">`;
+
+// Titre et image de la page produit, via Microlink (gratuit, ~50 liens/jour, sans clé).
+async function preview(url) {
+  const { data } = await (await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`)).json();
+  return { image: data?.image?.url, title: data?.title };
+}
 
 function newProfile() {
   const form = sheet(`<h2>Nouvelle personne</h2>
@@ -232,6 +246,8 @@ function newProfile() {
   imagePicker(form, 'photo');
 }
 
+const withScheme = (u) => (u = u.trim()) && !/^https?:\/\//i.test(u) ? `https://${u}` : u || null;
+
 function newGift(profileId) {
   const form = sheet(`<h2>Nouveau cadeau</h2>
     <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="https://"></label>
@@ -240,8 +256,7 @@ function newGift(profileId) {
     ${imageField('image', 'Image ou photo')}
     <div class="row">${cancel}<button class="btn">Ajouter</button></div>`,
   async (f) => {
-    let url = f.get('url').trim();
-    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    const url = withScheme(f.get('url'));
     const price = f.get('price').trim();
     await api.addGift({ profile_id: profileId, name: f.get('name').trim(), price: price ? Number(price.replace(',', '.')) : null, url: url || null, image: f.get('image') || null });
     await refresh();
@@ -249,9 +264,13 @@ function newGift(profileId) {
   const setImage = imagePicker(form, 'image');
   // Pré-remplit nom et image depuis la page produit quand le site le permet.
   form.url.onchange = async () => {
-    const { image, title } = await api.preview(form.url.value.trim()).catch(() => ({}));
-    if (title && !form.name.value) form.name.value = new DOMParser().parseFromString(title, 'text/html').body.textContent;
-    if (image && !form.image.value) setImage(image);
+    const url = withScheme(form.url.value);
+    if (!url || form.image.value) return;
+    const hint = $('.img-pick', form).appendChild(Object.assign(document.createElement('small'), { textContent: 'Recherche de l’image…' }));
+    const { image, title } = await preview(url).catch(() => ({}));
+    hint.remove();
+    if (title && !form.name.value) form.name.value = title.slice(0, 120);
+    if (image?.startsWith('https://') && !form.image.value) setImage(image);
   };
 }
 
