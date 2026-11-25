@@ -43,7 +43,7 @@ async function supabaseApi() {
     createProfile: async (p) => ok(await sb.rpc('create_profile', { p_name: p.name, p_photo: p.photo, p_is_me: p.isMe, p_families: p.families })),
     addProfileToFamily: async (pid, fid) => ok(await sb.rpc('add_profile_to_family', { p_profile: pid, p_family: fid })),
     deleteProfile: async (id) => ok(await sb.from('profiles').delete().eq('id', id)),
-    setNote: async (pid, note) => ok(await sb.rpc('set_profile_note', { p_profile: pid, p_note: note })),
+    updateProfile: async (p) => ok(await sb.rpc('update_profile', { p_profile: p.id, p_name: p.name, p_photo: p.photo, p_note: p.note, p_birth_year: p.birthYear, p_families: p.families })),
     addGift: async (g) => ok(await sb.from('gifts').insert({ ...g, added_by: pseudo })),
     deleteGift: async (id) => ok(await sb.from('gifts').delete().eq('id', id)),
     reserve: async (id) => ok(await sb.from('reservations').insert({ gift_id: id, reserved_by: pseudo })),
@@ -66,7 +66,7 @@ function demoApi() {
     return {
       families: [{ id: f1, name: 'Famille Drouet', code: 'NOEL24' }, { id: f2, name: 'Belle-famille', code: 'SAPIN1' }],
       memberships: [{ pseudo: 'Thibaut', family_id: f1 }],
-      profiles: [{ id: r, name: 'Richard', created_by: 'Valentin', owner: null, note: 'Fan de LEGO et de Batman, pas de vêtements svp !' }, { id: m, name: 'Mamie Jo', created_by: 'Valentin', owner: null },
+      profiles: [{ id: r, name: 'Richard', created_by: 'Valentin', owner: null, note: 'Fan de LEGO et de Batman, pas de vêtements svp !', birth_year: 2017 }, { id: m, name: 'Mamie Jo', created_by: 'Valentin', owner: null },
         { id: l, name: 'Léa', created_by: 'Léa', owner: 'Léa' }],
       links: [{ profile_id: r, family_id: f1 }, { profile_id: m, family_id: f1 }, { profile_id: m, family_id: f2 }, { profile_id: l, family_id: f2 }],
       gifts: [...items.map(([name, price, e, bg], i) => ({ id: `g${i}`, profile_id: r, name, price, url: `https://www.amazon.fr/s?k=${encodeURIComponent(name)}`, image: emoji(e, bg), added_by: 'Valentin', created_at: `2026-11-0${i % 9 + 1}T10:00:00Z` })),
@@ -108,7 +108,12 @@ function demoApi() {
     }),
     addProfileToFamily: async (pid, fid) => mut((s) => s.links.push({ profile_id: pid, family_id: fid })),
     deleteProfile: async (id) => mut((s) => { s.profiles = s.profiles.filter((p) => p.id !== id); }),
-    setNote: async (pid, note) => mut((s) => { s.profiles.find((p) => p.id === pid).note = note.trim() || null; }),
+    updateProfile: async (u) => mut((s) => {
+      if (!u.families.length) fail('Le profil doit rester dans au moins une famille');
+      Object.assign(s.profiles.find((p) => p.id === u.id), { name: u.name, photo: u.photo, note: u.note.trim() || null, birth_year: u.birthYear });
+      const mineF = view(s).families.map((f) => f.id);
+      s.links = s.links.filter((l) => l.profile_id !== u.id || !mineF.includes(l.family_id)).concat(u.families.map((fid) => ({ profile_id: u.id, family_id: fid })));
+    }),
     addGift: async (g) => mut((s) => s.gifts.push({ ...g, id: crypto.randomUUID(), added_by: me(), created_at: now() })),
     deleteGift: async (id) => mut((s) => { s.gifts = s.gifts.filter((g) => g.id !== id); s.reservations = s.reservations.filter((r) => r.gift_id !== id); }),
     reserve: async (id) => mut((s) => {

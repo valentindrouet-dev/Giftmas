@@ -86,5 +86,23 @@ const names = await val.$$eval('.person b', (b) => b.map((x) => x.textContent));
 assert.deepEqual(names.sort(), ['Ajouter', 'Léa', 'Mamie Jo'], 'le filtre ne montre que la belle-famille');
 await snap(val, '5-filtre');
 
+// Tri par prix, puis modification d'un membre depuis Familles (âge, prénom)
+await val.click('.chip:has-text("Tout le monde")');
+await val.click('.person:has-text("Richard")');
+await val.selectOption('[data-sort]', 'price-asc');
+assert.equal((await val.textContent('.gift .gift-name')).trim(), 'Livre Astérix', 'le moins cher en premier');
+await val.click('[aria-label="Familles et réglages"]');
+await val.click('.members button:has-text("Richard")');
+await val.fill('#sheet input[name=age]', '9');
+await val.fill('#sheet input[name=name]', 'Richou');
+await val.click('#sheet >> text=Enregistrer');
+await val.click('.members a:has-text("Richou"), .members button:has-text("Richou")');
+await val.click('#sheet >> text=Annuler');
+await val.click('[aria-label=Accueil]');
+await val.click('.person:has-text("Richou")');
+await val.waitForSelector('.phead small:has-text("9 ans")');
+await val.selectOption('[data-sort]', 'added');
+await snap(val, '6-tri-age');
+
 await browser.close();
 console.log('smoke OK');

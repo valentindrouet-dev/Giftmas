@@ -111,6 +111,22 @@ select as_user('33333333-3333-3333-3333-333333333333');
 select set_profile_note((select id from profiles where name = 'Moi Richard'), 'Des chaussettes');
 select check_((select note from profiles where name = 'Moi Richard') = 'Des chaussettes', 'la personne écrit ses propres envies');
 
+-- Modifier un membre
+select as_user('11111111-1111-1111-1111-111111111111');
+select update_profile('00000000-0000-0000-0000-0000000000a1', ' Richou ', null, 'LEGO', 2018::smallint, array['00000000-0000-0000-0000-0000000000f1'::uuid]);
+select check_((select name || birth_year from profiles where id = '00000000-0000-0000-0000-0000000000a1') = 'Richou2018', 'le créateur modifie le prénom et l''âge');
+do $$ begin
+  perform update_profile('00000000-0000-0000-0000-0000000000a1', 'Richou', null, null, null, '{}');
+  raise exception 'profil sans famille accepté';
+exception when raise_exception then if sqlerrm <> 'Le profil doit rester dans au moins une famille' then raise; end if; end $$;
+select check_((select count(*) from profile_families where profile_id = '00000000-0000-0000-0000-0000000000a1') = 1, 'un membre garde au moins une famille');
+select as_user('22222222-2222-2222-2222-222222222222');
+do $$ begin
+  perform update_profile('00000000-0000-0000-0000-0000000000a1', 'Pirate', null, null, null, array['00000000-0000-0000-0000-0000000000f1'::uuid]);
+  raise exception 'modif par un autre acceptée';
+exception when raise_exception then if sqlerrm <> 'Non autorisé' then raise; end if; end $$;
+select check_(true, 'un autre membre ne peut pas modifier le profil');
+
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');
 do $$ begin

@@ -68,9 +68,13 @@ main { padding: 30px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 9
 .avatar.shop { position: relative; overflow: hidden; }
 .avatar.shop img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 12px; object-fit: contain; background: #fff; }
 .members { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
-.members a { display: grid; justify-items: center; gap: 4px; width: 64px; font-size: 12px; text-decoration: none; text-align: center; }
+.members button { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.members a, .members button { display: grid; justify-items: center; gap: 4px; width: 64px; font-size: 12px; text-decoration: none; text-align: center; }
 .members .avatar { width: 44px; height: 44px; font-size: 18px; box-shadow: none; }
 .members span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
+.tools .card.note { flex: 1; min-width: 0; margin: 0; }
+.sort { flex: none; max-width: 36%; padding: 6px 8px; border: var(--outline); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; }
 .card.note { display: flex; align-items: flex-start; gap: 6px; font-size: 13.5px; line-height: 1.3; padding: 5px 10px; margin-bottom: 8px; }
 /* une ligne, le texte complet au toucher */
 .note p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }

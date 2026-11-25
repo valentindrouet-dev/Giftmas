@@ -8,7 +8,8 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.10';
+const VERSION = 'v0.11';
+let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
 let D; // toutes les données visibles
@@ -102,6 +103,7 @@ const avatar = (p) => p.photo
   ? `<img class="avatar" src="${esc(p.photo)}" alt="">`
   : `<span class="avatar" style="--c:hsl(${hue(p.name)} 60% 50%)" aria-hidden="true">${esc(p.name.slice(0, 1).toUpperCase())}</span>`;
 const famNames = (pid) => D.families.filter((f) => D.links.some((l) => l.profile_id === pid && l.family_id === f.id)).map((f) => esc(f.name)).join(' · ');
+const age = (p) => (p.birth_year ? `${new Date().getFullYear() - p.birth_year} ans` : '');
 const giftIco = (cls = '') => `<img class="gift-ico ${cls}" src="assets/hero-gift.webp" alt="">`;
 const thumb = (g) => (g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : '<img src="assets/gift-placeholder.webp" alt="">');
 
@@ -116,7 +118,7 @@ function home() {
     const counts = same(p.owner, D.pseudo)
       ? `<span class="counts" aria-label="${gifts.length} idées">${gifts.length} ${giftIco()}</span>`
       : `<span class="counts" aria-label="${gifts.length - taken} disponibles, ${taken} réservés">${gifts.length - taken} ${giftIco()} <i>|</i> ${taken} ${giftIco('off')}</span>`;
-    return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b>${counts}<small class="fams">${famNames(p.id)}</small></a>`;
+    return `<a class="person" href="#/p/${p.id}">${avatar(p)}<b>${esc(p.name)}</b>${counts}</a>`;
   });
   return `${chips()}<section class="people">${people.join('')}
     <button type="button" class="person add" data-act="new-profile"><span class="avatar" aria-hidden="true">${ico('plus')}</span><b>Ajouter</b><small>une personne</small></button>
@@ -128,7 +130,8 @@ function person(id) {
   if (!p) return '<p class="empty">Profil introuvable. <a href="#/">Retour</a></p>';
   const mine = same(p.owner, D.pseudo);
   const manage = mine || same(p.created_by, D.pseudo);
-  const tiles = D.gifts.filter((g) => g.profile_id === id).map((g) => {
+  const taken = (g) => D.reservations.some((r) => r.gift_id === g.id);
+  const tiles = sortGifts(D.gifts.filter((g) => g.profile_id === id), taken).map((g) => {
     const r = D.reservations.find((r) => r.gift_id === g.id);
     const byMe = r && same(r.reserved_by, D.pseudo);
     const inner = `${thumb(g)}<span class="gift-name">${esc(g.name)}</span>`;
@@ -143,13 +146,30 @@ function person(id) {
   });
   return `<div class="phead">
       <a class="icon-btn" href="#/" aria-label="Retour">${ico('back')}</a>${avatar(p)}
-      <h1>${esc(p.name)}<small>${mine ? 'Ta liste · les réservations te sont cachées 🤫' : famNames(p.id)}</small></h1>
+      <h1>${esc(p.name)}<small>${mine ? 'Ta liste · les réservations te sont cachées 🤫' : [age(p), famNames(p.id)].filter(Boolean).join(' · ')}</small></h1>
       <button type="button" class="icon-btn" data-act="new-gift" data-id="${p.id}" aria-label="Ajouter un cadeau">${ico('plus')}</button>
       <button type="button" class="icon-btn" data-act="profile-menu" data-id="${p.id}" aria-label="Options du profil">${ico('more')}</button>
     </div>
-    ${p.note || manage ? `<div class="card note"><p onclick="this.classList.toggle('open')">${p.note ? esc(p.note) : '<span class="muted">Pas encore d’envies précisées.</span>'}</p>
-      ${manage ? `<button type="button" class="link" data-act="edit-note" data-id="${p.id}">Modifier</button>` : ''}</div>` : ''}
+    <div class="tools">
+      ${p.note || manage ? `<div class="card note"><p onclick="this.classList.toggle('open')">${p.note ? esc(p.note) : '<span class="muted">Pas encore d’envies précisées.</span>'}</p>
+        ${manage ? `<button type="button" class="link" data-act="edit-profile" data-id="${p.id}">Modifier</button>` : ''}</div>` : ''}
+      <select class="sort" data-sort aria-label="Trier les cadeaux">${SORTS.map(([k, label]) => `<option value="${k}" ${sort === k ? 'selected' : ''}>${label}</option>`).join('')}</select>
+    </div>
     ${tiles.length ? `<section class="gifts">${tiles.join('')}</section>` : empty('gifts', 'Aucune idée pour l’instant.<br>Ajoute le premier cadeau avec le ＋ !')}`;
+}
+
+const SORTS = [['added', '↕ Ajout'], ['price-asc', '↕ Prix ↑'], ['price-desc', '↕ Prix ↓'], ['name', '↕ Nom'], ['shop', '↕ Enseigne'], ['free', '↕ Dispos'], ['taken', '↕ Réservés']];
+const shopOf = (g) => { try { return new URL(g.url).hostname.replace(/^www\./, ''); } catch { return '~'; } }; // sans lien : en dernier
+function sortGifts(list, taken) {
+  const by = {
+    'price-asc': (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+    'price-desc': (a, b) => (b.price ?? -1) - (a.price ?? -1),
+    name: (a, b) => a.name.localeCompare(b.name, 'fr'),
+    shop: (a, b) => shopOf(a).localeCompare(shopOf(b)),
+    free: (a, b) => taken(a) - taken(b),
+    taken: (a, b) => taken(b) - taken(a),
+  }[sort];
+  return by ? [...list].sort(by) : list;
 }
 
 const SHOPS = [
@@ -178,17 +198,21 @@ function notifs() {
       : empty('notifs', 'Tu seras prévenu ici quand quelqu’un réserve un cadeau sur un profil que tu as créé.')}`;
 }
 
+const canManage = (p) => same(p.owner, D.pseudo) || same(p.created_by, D.pseudo);
+
 function families() {
   return `<h1 class="title">Familles</h1>
     ${D.families.map((f) => {
       const members = D.profiles.filter((p) => D.links.some((l) => l.profile_id === p.id && l.family_id === f.id));
       return `<div class="card"><div class="fam"><div><b>${esc(f.name)}</b><small>Code : <span class="code">${esc(f.code)}</span></small></div>
         <button type="button" class="btn small" data-act="invite" data-id="${f.id}">${ico('invite')} Inviter</button></div>
-        <div class="members">${members.map((p) => `<a href="#/p/${p.id}">${avatar(p)}<span>${esc(p.name)}</span></a>`).join('') || '<small>Personne pour l’instant</small>'}</div></div>`;
+        <div class="members">${members.map((p) => canManage(p)
+          ? `<button type="button" data-act="edit-profile" data-id="${p.id}">${avatar(p)}<span>${esc(p.name)} ✎</span></button>`
+          : `<a href="#/p/${p.id}">${avatar(p)}<span>${esc(p.name)}</span></a>`).join('') || '<small>Personne pour l’instant</small>'}</div></div>`;
     }).join('')}
     <div class="card stack"><b>Mon profil cadeaux</b>
-      ${D.profiles.filter((p) => same(p.owner, D.pseudo) || same(p.created_by, D.pseudo)).map((p) =>
-        `<button type="button" class="btn ghost" data-act="edit-note" data-id="${p.id}">${avatar(p)} Envies de ${esc(p.name)}</button>`).join('')
+      ${D.profiles.filter(canManage).map((p) =>
+        `<button type="button" class="btn ghost" data-act="edit-profile" data-id="${p.id}">${avatar(p)} Modifier ${esc(p.name)}</button>`).join('')
         || '<small>Crée ton profil depuis l’accueil (＋ Ajouter, « C’est moi ») pour indiquer tes envies.</small>'}
     </div>
     <form class="card stack" data-form="join"><label>Rejoindre une autre famille<input name="code" required maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="Code"></label><button class="btn">Rejoindre</button></form>
@@ -235,7 +259,7 @@ function imagePicker(form, name) {
     if (v && !/^https:\/\//i.test(v)) return toast('L’adresse de l’image doit commencer par https://');
     set(v);
   };
-  return (src) => { link.value = src; set(src); };
+  return (src) => { link.value = /^https:/.test(src) ? src : ''; set(src); };
 }
 const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
   <label class="btn ghost small">${ico('camera')} ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label></div>
@@ -308,13 +332,28 @@ function newGift(profileId) {
   };
 }
 
-function editNote(id) {
+function editProfile(id) {
   const p = D.profiles.find((p) => p.id === id);
+  const year = new Date().getFullYear();
   $('#sheet').close();
-  sheet(`<h2>Envies de ${esc(p.name)}</h2>
-    <label>Goûts, tailles, idées, ce qu’il faut éviter…<textarea name="note" maxlength="500" rows="5">${esc(p.note)}</textarea></label>
+  const form = sheet(`<h2>${esc(p.name)}</h2>
+    <label>Prénom<input name="name" required maxlength="40" value="${esc(p.name)}"></label>
+    ${imageField('photo', 'Photo')}
+    <label>Âge<input name="age" inputmode="numeric" pattern="[0-9]{1,3}" placeholder="ex. 8" value="${p.birth_year ? year - p.birth_year : ''}"></label>
+    <label>Envies : goûts, tailles, idées, ce qu’il faut éviter…<textarea name="note" maxlength="500" rows="4">${esc(p.note)}</textarea></label>
+    <fieldset><legend>Familles</legend>
+      ${D.families.map((f) => `<label class="tick"><input type="checkbox" name="families" value="${f.id}" ${D.links.some((l) => l.profile_id === id && l.family_id === f.id) ? 'checked' : ''}> ${esc(f.name)}</label>`).join('')}
+    </fieldset>
     <div class="row">${cancel}<button class="btn">Enregistrer</button></div>`,
-  async (f) => { await api.setNote(id, f.get('note')); await refresh(); });
+  async (f) => {
+    const families = f.getAll('families');
+    if (!families.length) throw new Error('Choisis au moins une famille');
+    const a = f.get('age').trim();
+    await api.updateProfile({ id, name: f.get('name').trim(), photo: f.get('photo') || null, note: f.get('note'), birthYear: a ? year - Number(a) : null, families });
+    await refresh();
+  });
+  const setPhoto = imagePicker(form, 'photo');
+  if (p.photo) setPhoto(p.photo);
 }
 
 function profileMenu(id) {
@@ -322,7 +361,7 @@ function profileMenu(id) {
   const others = D.families.filter((f) => !D.links.some((l) => l.profile_id === id && l.family_id === f.id));
   sheet(`<h2>${esc(p.name)}</h2>
     ${others.map((f) => `<button type="button" class="btn ghost" data-act="add-to-family" data-id="${id}" data-fid="${f.id}">Ajouter aussi à ${esc(f.name)}</button>`).join('')}
-    ${same(p.created_by, D.pseudo) || same(p.owner, D.pseudo) ? `<button type="button" class="btn ghost" data-act="edit-note" data-id="${id}">Modifier les envies</button>` : ''}
+    ${same(p.created_by, D.pseudo) || same(p.owner, D.pseudo) ? `<button type="button" class="btn ghost" data-act="edit-profile" data-id="${id}">Modifier le profil</button>` : ''}
     <button type="button" class="btn ghost" data-act="share-list" data-id="${id}">${ico('share')} Partager cette liste</button>
     ${same(p.created_by, D.pseudo) ? `<button type="button" class="btn danger" data-act="del-profile" data-id="${id}">Supprimer ce profil</button>` : ''}
     <button class="btn ghost" value="cancel">Fermer</button>`, () => {});
@@ -339,7 +378,7 @@ const run = (fn) => fn().then(refresh).catch((e) => toast(e.message));
 const actions = {
   filter: (b) => { filter = b.dataset.id; localStorage.setItem('giftmas-filter', filter); render(); },
   'new-profile': () => newProfile(),
-  'edit-note': (b) => editNote(b.dataset.id),
+  'edit-profile': (b) => editProfile(b.dataset.id),
   'new-gift': (b) => newGift(b.dataset.id),
   'profile-menu': (b) => profileMenu(b.dataset.id),
   'del-gift': (b) => confirm('Supprimer ce cadeau (et sa réservation) ?') && run(() => api.deleteGift(b.dataset.id)),
@@ -356,6 +395,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('change', async (e) => {
+  if (e.target.matches('[data-sort]')) { sort = e.target.value; localStorage.setItem('giftmas-sort', sort); return render(); }
   const id = e.target.dataset.reserve;
   if (!id) return;
   const box = e.target;
