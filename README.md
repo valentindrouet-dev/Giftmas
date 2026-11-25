@@ -58,7 +58,7 @@ npx supabase functions deploy giftmas-push
 
 Enfin, **Database > Webhooks > Create** : table `giftmas.notifications`, événement `Insert`, type **Supabase Edge Functions**, fonction `giftmas-push`.
 
-Le nom et l'image d'un cadeau sont pré-remplis depuis le lien produit grâce à [Microlink](https://microlink.io) (gratuit, environ 50 liens par jour). Si ça échoue, ajoute une photo ou colle l'adresse d'une image.
+Le nom, l'image et le prix d'un cadeau sont pré-remplis depuis le lien produit grâce à [Microlink](https://microlink.io) (gratuit, environ 50 liens par jour). Si ça échoue, ajoute une photo ou colle l'adresse d'une image.
 
 ### 4. Sur iPhone
 Safari > Partager > **Sur l'écran d'accueil**, puis ouvre Giftmas depuis l'icône. Dans 🔔, touche **Recevoir les notifications**. Chaque personne qui veut le push sur son téléphone doit faire cette manip ; les autres voient leurs notifications dans l'app.
@@ -67,6 +67,8 @@ Safari > Partager > **Sur l'écran d'accueil**, puis ouvre Giftmas depuis l'icô
 ```bash
 # Règles d'accès : dans une base Postgres vide, depuis la racine du repo
 psql -v ON_ERROR_STOP=1 -f tests/rls.sql
+# Lecture des prix
+node tests/price.test.mjs
 # Parcours complet en mode démo (Playwright)
 python3 -m http.server 8123 &
 node tests/smoke.mjs

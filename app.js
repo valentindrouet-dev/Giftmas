@@ -1,5 +1,6 @@
 import { api, DEMO, same } from './data.js';
 import { VAPID_PUBLIC_KEY } from './config.js';
+import { parsePrice } from './price.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -7,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.03';
+const VERSION = 'v0.04';
 let D; // toutes les données visibles
 let filter = localStorage.getItem('giftmas-filter') || '';
 
@@ -222,10 +223,17 @@ const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
   <input name="${name}-url" inputmode="url" autocomplete="off" aria-label="Adresse web de l’image" placeholder="ou colle l’adresse d’une image (https://…)">
   <input type="hidden" name="${name}">`;
 
-// Titre et image de la page produit, via Microlink (gratuit, ~50 liens/jour, sans clé).
+// Titre, image et prix de la page produit, via Microlink (gratuit, ~50 liens/jour, sans clé).
+// Prix : balise d'Amazon (texte) ou balises standard des sites marchands (attribut content).
 async function preview(url) {
-  const { data } = await (await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`)).json();
-  return { image: data?.image?.url, title: data?.title };
+  const q = new URLSearchParams({
+    url,
+    'data.priceText.selector': '#corePrice_feature_div .a-offscreen, .a-price .a-offscreen, [itemprop=price]',
+    'data.priceMeta.selector': 'meta[property="product:price:amount"], meta[property="og:price:amount"], [itemprop=price][content]',
+    'data.priceMeta.attr': 'content',
+  });
+  const { data } = await (await fetch(`https://api.microlink.io/?${q}`)).json();
+  return { image: data?.image?.url, title: data?.title, price: parsePrice(data?.priceMeta) ?? parsePrice(data?.priceText) };
 }
 
 function newProfile() {
@@ -266,11 +274,12 @@ function newGift(profileId) {
   // Pré-remplit nom et image depuis la page produit quand le site le permet.
   form.url.onchange = async () => {
     const url = withScheme(form.url.value);
-    if (!url || form.image.value) return;
-    const hint = $('.img-pick', form).appendChild(Object.assign(document.createElement('small'), { textContent: 'Recherche de l’image…' }));
-    const { image, title } = await preview(url).catch(() => ({}));
+    if (!url || (form.image.value && form.price.value)) return;
+    const hint = $('.img-pick', form).appendChild(Object.assign(document.createElement('small'), { textContent: 'Recherche de l’image et du prix…' }));
+    const { image, title, price } = await preview(url).catch(() => ({}));
     hint.remove();
     if (title && !form.name.value) form.name.value = title.slice(0, 120);
+    if (price && !form.price.value) form.price.value = String(price).replace('.', ',');
     if (image?.startsWith('https://') && !form.image.value) setImage(image);
   };
 }
