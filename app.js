@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.17';
+const VERSION = 'v0.18';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -18,6 +18,7 @@ let filter = localStorage.getItem('giftmas-filter') || '';
 // ───────── Démarrage ─────────
 const invite = new URLSearchParams(location.search).get('code');
 navigator.serviceWorker?.register('sw.js');
+document.documentElement.classList.toggle('standalone', navigator.standalone === true || matchMedia('(display-mode: standalone)').matches);
 if (await api.session()) {
   if (invite) await api.joinFamily(invite).catch((e) => toast(e.message));
   start();
@@ -304,7 +305,7 @@ const withScheme = (u) => (u = u.trim()) && !/^https?:\/\//i.test(u) ? `https://
 
 // Formulaire d'ajout, ou de modification quand on passe un cadeau existant.
 function newGift(profileId, g = null) {
-  const form = sheet(`<h2>${g ? 'Modifier le cadeau' : 'Nouveau cadeau'}</h2>
+  const form = sheet(`<h2 ${g ? 'tabindex="-1" autofocus' : ''}>${g ? 'Modifier le cadeau' : 'Nouveau cadeau'}</h2>
     <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="https://" value="${esc(g?.url)}"></label>
     <label>Nom<input name="name" required maxlength="120" value="${esc(g?.name)}"></label>
     <label>Prix (€)<input name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" placeholder="29,90" value="${g?.price != null ? String(g.price).replace('.', ',') : ''}"></label>
@@ -335,7 +336,7 @@ function editProfile(id) {
   const p = D.profiles.find((p) => p.id === id);
   const year = new Date().getFullYear();
   $('#sheet').close();
-  const form = sheet(`<h2>${esc(p.name)}</h2>
+  const form = sheet(`<h2 tabindex="-1" autofocus>${esc(p.name)}</h2>
     <label>Prénom<input name="name" required maxlength="40" value="${esc(p.name)}"></label>
     ${imageField('photo', 'Photo')}
     <label>Âge<input name="age" inputmode="numeric" pattern="[0-9]{1,3}" placeholder="ex. 8" value="${p.birth_year ? year - p.birth_year : ''}"></label>

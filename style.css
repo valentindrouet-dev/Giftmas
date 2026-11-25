@@ -13,6 +13,7 @@ body {
   font: 16px/1.35 system-ui, -apple-system, sans-serif; color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
+h2:focus { outline: none; }
 h1, h2, .brand, .btn { font-family: Fredoka, system-ui, sans-serif; font-weight: 600; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
@@ -24,6 +25,8 @@ a { color: inherit; }
   padding: calc(env(safe-area-inset-top) + 4px) 10px 4px 14px; background: var(--accent); color: #fff;
   box-shadow: 0 2px 12px rgb(0 0 0 / .15);
 }
+/* en mode app (écran d'accueil), on descend l'en-tête sous la zone floutée par iOS */
+.standalone .top { padding-top: calc(env(safe-area-inset-top) + 18px); }
 .brand { display: flex; align-items: center; gap: 6px; color: #fff; text-decoration: none; font-size: 22px; }
 .brand img { width: 34px; height: 34px; object-fit: contain; }
 .ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
@@ -39,7 +42,7 @@ a { color: inherit; }
 .demo { background: var(--gold); color: #2a1f1a; font-size: 13px; text-align: center; padding: 4px; }
 /* pastille flottante : n'occupe pas de place, la mise en page démo = la vraie */
 .top + .demo { position: fixed; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 6; padding: 3px 10px; border-radius: 99px; font-size: 11px; opacity: .9; pointer-events: none; }
-main { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); max-width: 900px; margin: auto; }
+main { padding: 12px 8px calc(24px + env(safe-area-inset-bottom)); max-width: 900px; margin: auto; }
 .title { font-size: 24px; margin: 4px 0 12px; }
 
 /* Filtre familles */
@@ -105,13 +108,13 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 }
 
 /* Grille de cadeaux : 3 colonnes sur iPhone, 9 visibles sans défiler */
-.gifts { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.gifts { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
 .gift { position: relative; display: flex; flex-direction: column; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s; }
 /* pas d'aperçu de lien iOS ni de sélection de texte sur appui long */
 .gift { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .gift-link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
-.gift-link img { width: 100%; aspect-ratio: 1; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
+.gift-link img { width: 100%; aspect-ratio: 6 / 5; object-fit: cover; display: grid; place-items: center; background: var(--line); font-size: 30px; }
 .gift-foot { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding-left: 7px; }
 .price { font-weight: 700; font-size: 13px; color: var(--green); }
 .check { display: grid; place-items: center; width: 44px; height: 38px; cursor: pointer; }
