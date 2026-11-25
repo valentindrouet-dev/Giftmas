@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.15';
+const VERSION = 'v0.16';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -134,8 +134,8 @@ function person(id) {
   const tiles = sortGifts(D.gifts.filter((g) => g.profile_id === id), taken).map((g) => {
     const r = D.reservations.find((r) => r.gift_id === g.id);
     const byMe = r && same(r.reserved_by, D.pseudo);
-    const inner = `${thumb(g)}<span class="gift-name">${esc(g.name)}</span>`;
-    return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}">
+    const inner = thumb(g); // le nom est dans l'infobulle
+    return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}" data-name="${esc(g.name)}">
       <button type="button" class="gift-link" data-act="gift-info" data-id="${g.id}" aria-label="Détails de ${esc(g.name)}">${inner}</button>
       <div class="gift-foot"><span class="price">${euro(g.price)}</span>
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
