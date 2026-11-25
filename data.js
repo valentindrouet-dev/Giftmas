@@ -6,7 +6,10 @@ export const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().
 
 async function supabaseApi() {
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db: { schema: 'giftmas' } });
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    db: { schema: 'giftmas' },
+    auth: { storageKey: 'giftmas-auth' }, // session distincte de l'autre app du même projet (même domaine github.io)
+  });
   const ok = ({ data, error }) => {
     if (error) throw new Error(error.code === '23505' ? 'Déjà réservé par quelqu’un d’autre !' : error.message);
     return data;
