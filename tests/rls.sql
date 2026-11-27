@@ -135,7 +135,7 @@ do $$ begin
 exception when raise_exception then if sqlerrm <> 'Non autorisé' then raise; end if; end $$;
 select check_(true, 'un autre membre ne peut pas modifier un cadeau');
 select update_gift((select id from gifts where name = 'Pull moche'), 'Pull très moche', 25, 'https://exemple.fr/pull', null);
-select check_((select price from gifts where name = 'Pull très moche') = 25, 'celui qui a ajouté le cadeau le modifie');
+select check_((select price from gifts_v where name = 'Pull très moche') = 25, 'celui qui a ajouté le cadeau le modifie');
 select as_user('11111111-1111-1111-1111-111111111111');
 select update_gift((select id from gifts where name = 'Livre Astérix'), 'Astérix chez les Pictes', 13.5, null, null);
 select check_((select count(*) from gifts where name = 'Astérix chez les Pictes') = 1, 'le gestionnaire du profil modifie un cadeau');
@@ -181,6 +181,33 @@ select as_user('11111111-1111-1111-1111-111111111111');
 select check_((select count(*) from notifications) = 1, 'on ne supprime pas les notifications des autres');
 delete from notifications;
 select check_((select count(*) from notifications) = 0, 'on supprime ses propres notifications');
+
+-- Prix masqués une fois réservé (LEGO Batman : ajouté par Valentin, réservé par Thibaut)
+select as_user('22222222-2222-2222-2222-222222222222');
+select check_((select price from gifts_v where name = 'LEGO Batman') = 39.99, 'l''acheteur voit le prix');
+select as_user('11111111-1111-1111-1111-111111111111');
+select check_((select price from gifts_v where name = 'LEGO Batman') = 39.99, 'celui qui a ajouté le cadeau voit le prix');
+select check_((select price from gifts_v where name = 'Astérix chez les Pictes') = 13.5, 'un cadeau libre montre son prix à tous');
+select check_((select price from gifts_v where name = 'Pull très moche') is null, 'un autre membre ne voit pas le prix d''un cadeau réservé');
+do $$ begin
+  perform price from gifts limit 1;
+  raise exception 'prix lisible dans la table';
+exception when insufficient_privilege then null; end $$;
+select check_(true, 'la colonne prix de la table est illisible');
+select as_user('33333333-3333-3333-3333-333333333333');
+select check_((select price from gifts_v where name = 'Pull très moche') = 25, 'la personne voit le prix sur sa propre liste (surprise préservée)');
+select check_((select price from gifts_v where name = 'LEGO Batman') is null, 'un tiers ne voit pas le prix d''un cadeau réservé');
+-- Toupie : ajoutée par Thibaut sur Richou (géré par Valentin), réservée par Richard ; Valentin la modifie sans voir le prix
+select as_user('22222222-2222-2222-2222-222222222222');
+insert into gifts (profile_id, name, price, added_by) values ('00000000-0000-0000-0000-0000000000a1', 'Toupie', 9, 'Thibaut');
+select as_user('33333333-3333-3333-3333-333333333333');
+insert into reservations (gift_id, reserved_by) select id, 'Richard' from gifts where name = 'Toupie';
+select as_user('11111111-1111-1111-1111-111111111111');
+select check_((select price from gifts_v where name = 'Toupie') is null, 'le gestionnaire du profil ne voit pas le prix');
+select update_gift((select id from gifts where name = 'Toupie'), 'Toupie lumineuse', null, null, null);
+reset role;
+select check_((select price from giftmas.gifts where name = 'Toupie lumineuse') = 9, 'modifier sans voir le prix ne l''efface pas');
+set role authenticated;
 
 -- L'étranger ne peut rien faire
 select as_user('44444444-4444-4444-4444-444444444444');

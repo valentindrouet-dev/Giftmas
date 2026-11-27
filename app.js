@@ -8,7 +8,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.22';
+const VERSION = 'v0.23';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -138,7 +138,7 @@ function person(id) {
     const inner = thumb(g); // le nom est dans l'infobulle
     return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}" data-name="${esc(g.name)}">
       <button type="button" class="gift-link" data-act="gift-info" data-id="${g.id}" aria-label="Détails de ${esc(g.name)}">${inner}</button>
-      <div class="gift-foot"><span class="price">${euro(g.price)}</span>
+      <div class="gift-foot">${g.price == null && r ? '<span class="price hidden-price" title="Prix masqué">🔒</span>' : `<span class="price">${euro(g.price)}</span>`}
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
           aria-label="${r ? `Réservé par ${esc(r.reserved_by)}` : `Je réserve ${esc(g.name)}`}"></label>`}</div>
       ${r ? `<span class="by">${byMe ? 'Moi' : esc(r.reserved_by)}</span>` : ''}
@@ -475,7 +475,7 @@ document.addEventListener('contextmenu', (e) => { if (e.target.closest('.gift'))
 function giftInfo(el) {
   const g = D.gifts.find((g) => g.id === el.dataset.id), r = D.reservations.find((r) => r.gift_id === g.id);
   const pop = $('#pop');
-  pop.innerHTML = `<b>${esc(g.name)}</b>${g.price != null ? `<span class="price">${euro(g.price)}</span>` : ''}
+  pop.innerHTML = `<b>${esc(g.name)}</b>${g.price != null ? `<span class="price">${euro(g.price)}</span>` : r ? '<small>🔒 Prix masqué (déjà offert)</small>' : ''}
     ${r ? `<small>Réservé par ${same(r.reserved_by, D.pseudo) ? 'moi' : esc(r.reserved_by)}</small>` : ''}
     ${g.url ? `<a class="btn small" href="${esc(g.url)}" target="_blank" rel="noopener">${ico('link')} Voir sur le site</a>` : '<small>Pas de lien d’achat</small>'}`;
   pop.hidden = false;

@@ -36,7 +36,7 @@ async function supabaseApi() {
       const q = (t) => sb.from(t).select('*');
       const [families, profiles, links, gifts, reservations, notifications] = (await Promise.all([
         q('families').order('name'), q('profiles').order('name'), q('profile_families'),
-        q('gifts').order('created_at'), q('reservations'),
+        q('gifts_v').order('created_at'), q('reservations'),
         q('notifications').order('created_at', { ascending: false }).limit(50),
       ])).map(ok);
       return { pseudo, families, profiles, links, gifts, reservations, notifications };
@@ -89,8 +89,12 @@ function demoApi() {
     const families = s.families.filter((f) => s.memberships.some((m) => m.family_id === f.id && same(m.pseudo, me())));
     const links = s.links.filter((l) => families.some((f) => f.id === l.family_id));
     const profiles = s.profiles.filter((p) => links.some((l) => l.profile_id === p.id)).sort((a, b) => a.name.localeCompare(b.name));
-    const gifts = s.gifts.filter((g) => profiles.some((p) => p.id === g.profile_id));
-    const mine = (id) => same(profiles.find((p) => p.id === gifts.find((g) => g.id === id)?.profile_id)?.owner, me());
+    const mine = (id) => same(profiles.find((p) => p.id === s.gifts.find((g) => g.id === id)?.profile_id)?.owner, me());
+    // prix d'un cadeau réservé : seulement pour celui qui l'a ajouté, l'acheteur et la personne elle-même
+    const gifts = s.gifts.filter((g) => profiles.some((p) => p.id === g.profile_id)).map((g) => {
+      const r = s.reservations.find((r) => r.gift_id === g.id);
+      return r && !same(g.added_by, me()) && !same(r.reserved_by, me()) && !mine(g.id) ? { ...g, price: null } : g;
+    });
     const reservations = s.reservations.filter((r) => gifts.some((g) => g.id === r.gift_id) && !mine(r.gift_id));
     const notifications = s.notifications.filter((n) => same(n.recipient, me())).reverse();
     return { pseudo: me(), families, profiles, links, gifts, reservations, notifications, mine };
@@ -127,7 +131,7 @@ function demoApi() {
       s.links = s.links.filter((l) => l.profile_id !== u.id || !mineF.includes(l.family_id)).concat(u.families.map((fid) => ({ profile_id: u.id, family_id: fid })));
     }),
     addGift: async (g) => mut((s) => s.gifts.push({ ...g, id: crypto.randomUUID(), added_by: me(), created_at: now() })),
-    updateGift: async (u) => mut((s) => Object.assign(s.gifts.find((g) => g.id === u.id), { name: u.name, price: u.price, url: u.url, image: u.image })),
+    updateGift: async (u) => mut((s) => { const g = s.gifts.find((g) => g.id === u.id); Object.assign(g, { name: u.name, url: u.url, image: u.image }, view(s).gifts.find((x) => x.id === u.id).price == null && g.price != null ? {} : { price: u.price }); }),
     deleteGift: async (id) => mut((s) => { s.gifts = s.gifts.filter((g) => g.id !== id); s.reservations = s.reservations.filter((r) => r.gift_id !== id); }),
     reserve: async (id) => mut((s) => {
       if (s.reservations.some((r) => r.gift_id === id)) fail('Déjà réservé par quelqu’un d’autre !');
