@@ -1,6 +1,7 @@
 import { api, DEMO, same } from './data.js';
 import { VAPID_PUBLIC_KEY } from './config.js';
 import { parsePrice } from './price.js';
+import { parseShared, isGenericTitle, nameFromUrl } from './link.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -8,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.23';
+const VERSION = 'v0.24';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -138,7 +139,7 @@ function person(id) {
     const inner = thumb(g); // le nom est dans l'infobulle
     return `<article class="gift${r ? ' taken' : ''}" data-id="${g.id}" data-name="${esc(g.name)}">
       <button type="button" class="gift-link" data-act="gift-info" data-id="${g.id}" aria-label="Détails de ${esc(g.name)}">${inner}</button>
-      <div class="gift-foot">${g.price == null && r ? '<span class="price hidden-price" title="Prix masqué">🔒</span>' : `<span class="price">${euro(g.price)}</span>`}
+      <div class="gift-foot">${g.price == null && r ? '<span class="price-hidden" aria-label="Prix masqué"></span>' : `<span class="price">${euro(g.price)}</span>`}
         ${mine ? '' : `<label class="check"><input type="checkbox" data-reserve="${g.id}" ${r ? 'checked' : ''} ${r && !byMe ? 'disabled' : ''}
           aria-label="${r ? `Réservé par ${esc(r.reserved_by)}` : `Je réserve ${esc(g.name)}`}"></label>`}</div>
       ${r ? `<span class="by">${byMe ? 'Moi' : esc(r.reserved_by)}</span>` : ''}
@@ -287,7 +288,7 @@ async function preview(url) {
   });
   const { data } = await (await fetch(`https://api.microlink.io/?${q}`)).json();
   const price = [data?.p1, data?.p2, data?.p3, data?.p4].map(parsePrice).find(Boolean) ?? null;
-  return { image: data?.image?.url, title: data?.title, price };
+  return { image: data?.image?.url, title: data?.title, url: data?.url, price };
 }
 
 function newProfile() {
@@ -314,7 +315,8 @@ const withScheme = (u) => (u = u.trim()) && !/^https?:\/\//i.test(u) ? `https://
 // Formulaire d'ajout, ou de modification quand on passe un cadeau existant.
 function newGift(profileId, g = null) {
   const form = sheet(`<h2 ${g ? 'tabindex="-1" autofocus' : ''}>${g ? 'Modifier le cadeau' : 'Nouveau cadeau'}</h2>
-    <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="https://" value="${esc(g?.url)}"></label>
+    <label>Lien d’achat (Amazon, Fnac…)<input name="url" inputmode="url" autocomplete="off" placeholder="Colle le lien ou le texte partagé" value="${esc(g?.url)}"></label>
+    <p class="fetch-status" aria-live="polite" hidden></p>
     <label>Nom<input name="name" required maxlength="120" value="${esc(g?.name)}"></label>
     <label>Prix (€)<input name="price" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" placeholder="29,90" value="${g?.price != null ? String(g.price).replace('.', ',') : ''}"></label>
     ${imageField('image', 'Image ou photo')}
@@ -327,17 +329,28 @@ function newGift(profileId, g = null) {
   });
   const setImage = imagePicker(form, 'image');
   if (g?.image) setImage(g.image);
-  // Pré-remplit nom et image depuis la page produit quand le site le permet.
-  form.url.onchange = async () => {
-    const url = withScheme(form.url.value);
-    if (!url || (form.image.value && form.price.value)) return;
-    const hint = $('.img-pick', form).appendChild(Object.assign(document.createElement('small'), { textContent: 'Recherche de l’image et du prix…' }));
-    const { image, title, price } = await preview(url).catch(() => ({}));
-    hint.remove();
-    if (title && !form.name.value) form.name.value = title.slice(0, 120);
-    if (price && !form.price.value) form.price.value = String(price).replace('.', ',');
-    if (image?.startsWith('https://') && !form.image.value) setImage(image);
+  // Dès qu'un lien est collé : nom (texte partagé, page, adresse), image et prix, sans écraser ce qui est saisi.
+  const status = $('.fetch-status', form);
+  const say = (text, cls = '') => { status.hidden = !text; status.className = `fetch-status ${cls}`; status.textContent = text; };
+  let lastUrl = g?.url ?? '', timer;
+  const lookup = async () => {
+    const { url, name } = parseShared(form.url.value);
+    if (!url || url === lastUrl) return;
+    lastUrl = url;
+    form.url.value = url; // garde seulement l'adresse si on a collé tout le texte partagé
+    if (name && !form.name.value) form.name.value = name;
+    say('Je cherche le nom, l’image et le prix…', 'busy');
+    const info = await preview(url).catch(() => ({}));
+    if (form.url.value !== url) return; // lien changé entre-temps
+    const found = [];
+    const title = isGenericTitle(info.title) ? '' : info.title;
+    if (!form.name.value && (title || nameFromUrl(info.url || url))) { form.name.value = (title || nameFromUrl(info.url || url)).slice(0, 120); found.push('nom'); }
+    if (info.image?.startsWith('https://') && !form.image.value) { setImage(info.image); found.push('image'); }
+    if (info.price && !form.price.value) { form.price.value = String(info.price).replace('.', ','); found.push('prix'); }
+    say(found.length ? `Trouvé : ${found.join(', ')}. Vérifie et complète si besoin.` : 'Ce site ne donne pas ses infos : complète le nom et le prix à la main.', found.length ? 'ok' : 'ko');
   };
+  form.url.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(lookup, 500); });
+  form.url.addEventListener('change', lookup);
 }
 
 function editProfile(id) {
@@ -475,7 +488,7 @@ document.addEventListener('contextmenu', (e) => { if (e.target.closest('.gift'))
 function giftInfo(el) {
   const g = D.gifts.find((g) => g.id === el.dataset.id), r = D.reservations.find((r) => r.gift_id === g.id);
   const pop = $('#pop');
-  pop.innerHTML = `<b>${esc(g.name)}</b>${g.price != null ? `<span class="price">${euro(g.price)}</span>` : r ? '<small>🔒 Prix masqué (déjà offert)</small>' : ''}
+  pop.innerHTML = `<b>${esc(g.name)}</b>${g.price != null ? `<span class="price">${euro(g.price)}</span>` : r ? '<small>Déjà offert</small>' : ''}
     ${r ? `<small>Réservé par ${same(r.reserved_by, D.pseudo) ? 'moi' : esc(r.reserved_by)}</small>` : ''}
     ${g.url ? `<a class="btn small" href="${esc(g.url)}" target="_blank" rel="noopener">${ico('link')} Voir sur le site</a>` : '<small>Pas de lien d’achat</small>'}`;
   pop.hidden = false;

@@ -41,7 +41,7 @@ await val.waitForSelector('.gift[data-name="LEGO Batman"] input[aria-label="Rés
 assert.equal((await val.textContent('.gift[data-name="LEGO Batman"] .price')).replace(/\s/g, ' ').trim(), '39,99 €', 'celui qui a ajouté le cadeau voit son prix');
 const lea = await loginAs('Léa2');
 await lea.click('.person:has-text("Richard")');
-await lea.waitForSelector('.gift[data-name="LEGO Batman"] .hidden-price');
+await lea.waitForSelector('.gift[data-name="LEGO Batman"] .price-hidden');
 await lea.close();
 await val.click('.gift[data-name="LEGO Batman"] .gift-link');
 await val.waitForSelector('#pop:not([hidden]) >> text=Réservé par Thibaut');

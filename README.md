@@ -71,6 +71,8 @@ Safari > Partager > **Sur l'écran d'accueil**, puis ouvre Giftmas depuis l'icô
 psql -v ON_ERROR_STOP=1 -f tests/rls.sql
 # Lecture des prix
 node tests/price.test.mjs
+# Lecture des liens produit
+node tests/link.test.mjs
 # Parcours complet en mode démo (Playwright)
 python3 -m http.server 8123 &
 node tests/smoke.mjs

@@ -120,6 +120,12 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .gift-link { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
 .gift-link img { width: 100%; aspect-ratio: 6 / 5; object-fit: cover; display: grid; place-items: center; background: #fff; font-size: 30px; } /* fond blanc sous les images transparentes */
 .gift-foot { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding-left: 7px; }
+/* prix masqué d'un cadeau déjà offert : un simple trait */
+.price-hidden { display: block; width: 34px; height: 5px; border-radius: 3px; background: var(--line); }
+.fetch-status { margin: -6px 0 0; padding: 8px 12px; border-radius: 12px; font-size: 14px; background: var(--bg); color: var(--muted); }
+.fetch-status.busy { color: var(--ink); background: #fdf0c8; animation: pulse 1.2s ease-in-out infinite; }
+.fetch-status.ok { color: var(--green); background: #e3f3ea; }
+@keyframes pulse { 50% { opacity: .55; } }
 .price { font: 600 15px Fredoka, system-ui, sans-serif; color: var(--green); }
 .check { display: grid; place-items: center; width: 44px; height: 38px; cursor: pointer; }
 .check input { appearance: none; display: grid; place-items: center; width: 26px; height: 26px; margin: 0; border: 2px solid var(--muted); border-radius: 8px; background: var(--card); }
