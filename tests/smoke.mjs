@@ -89,6 +89,19 @@ const corner = await val.evaluate(async () => {
   x.drawImage(im, 0, 0, 4, 4); return [...x.getImageData(0, 0, 1, 1).data];
 });
 assert.ok(corner[0] > 220 && corner[1] > 220 && corner[2] > 220, `zone transparente devenue blanche (vu ${corner})`);
+// Collage natif (appui long > Coller) d'une image, puis d'un contenu HTML contenant une image
+await val.evaluate(async () => {
+  const c = Object.assign(document.createElement('canvas'), { width: 50, height: 50 });
+  const png = await new Promise((r) => c.toBlob(r, 'image/png'));
+  const dt = new DataTransfer(); dt.items.add(new File([png], 'p.png', { type: 'image/png' }));
+  document.querySelector('#sheet [data-paste]').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+});
+await val.waitForFunction(() => document.querySelector('#sheet input[name=image]').value.startsWith('data:image/jpeg'));
+await val.evaluate(() => {
+  const dt = new DataTransfer(); dt.setData('text/html', '<img src="https://images.example.com/produit.jpg">');
+  document.querySelector('#sheet [data-paste]').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+});
+assert.equal(await val.inputValue('#sheet input[name=image]'), 'https://images.example.com/produit.jpg', 'image tirée du HTML collé');
 await val.fill('#sheet input[name=image-url]', 'https://example.com/velo.jpg');
 await val.dispatchEvent('#sheet input[name=image-url]', 'change');
 await val.click('#sheet >> text=Ajouter');

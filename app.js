@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.30';
+const VERSION = 'v0.31';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -323,20 +323,45 @@ function imagePicker(form, name) {
   const set = (src) => { out.value = src; preview.src = src; preview.hidden = !src; };
   const take = async (file) => file?.type.startsWith('image/') && (link.value = '', set(await shrink(file).catch(() => '')));
   input.onchange = () => take(input.files[0]);
-  form.addEventListener('paste', (e) => take(e.clipboardData.files[0]));
-  // Bouton « Coller » : image copiée (appui long > Copier) ou adresse d'image. iOS demande une confirmation.
-  $('[data-paste]', form).onclick = async () => {
-    try {
-      for (const item of await navigator.clipboard.read()) {
-        const type = item.types.find((t) => t.startsWith('image/'));
-        if (type) return take(new File([await item.getType(type)], 'image', { type }));
-        if (item.types.includes('text/plain')) {
-          const t = (await (await item.getType('text/plain')).text()).trim();
-          if (/^https:\/\/\S+$/i.test(t)) { link.value = t; return set(t); }
-        }
+  // Ce que Safari met dans le presse-papiers selon les cas : l'image, son adresse, ou du HTML qui la contient.
+  const useUrl = (u) => { link.value = u; set(u); return true; };
+  const fromText = (text, html) => {
+    const src = html && new DOMParser().parseFromString(html, 'text/html').querySelector('img[src^="https://"]')?.src;
+    if (src) return useUrl(src);
+    const t = String(text ?? '').trim().split(/\s+/)[0];
+    return /^https:\/\/\S+$/i.test(t) ? useUrl(t) : false;
+  };
+  const zone = $('[data-paste]', form);
+  zone.addEventListener('input', () => { zone.textContent = '📋 Coller'; }); // la zone n'accepte que des collages
+  // 1) collage natif d'iOS (appui long sur la zone > Coller) : le plus fiable sur iPhone
+  form.addEventListener('paste', async (e) => {
+    const d = e.clipboardData;
+    const file = [...d.files].find((f) => f.type.startsWith('image/'))
+      ?? [...d.items].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
+    const onZone = e.target.closest?.('[data-paste]');
+    if (file) { e.preventDefault(); await take(file); }
+    else if (onZone) {
+      e.preventDefault();
+      if (!fromText(d.getData('text/uri-list') || d.getData('text/plain'), d.getData('text/html'))) {
+        toast(`Image non reconnue (contenu : ${[...d.types].join(', ') || 'vide'})`);
       }
-      toast('Pas d’image copiée : appui long sur l’image du produit, puis « Copier »');
-    } catch { toast('Collage impossible : autorise le collage, ou utilise « Photo »'); }
+    }
+    if (onZone) zone.blur();
+  });
+  // 2) toucher : lecture directe du presse-papiers ; en cas d'échec, l'appui long reste possible
+  zone.onclick = async () => {
+    if (!navigator.clipboard?.read) return toast('Appui long sur ce bouton, puis « Coller »');
+    try {
+      const seen = [];
+      for (const item of await navigator.clipboard.read()) {
+        seen.push(...item.types);
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) { zone.blur(); return take(new File([await item.getType(type)], 'image', { type })); }
+        const read = async (t) => (item.types.includes(t) ? (await item.getType(t)).text() : '');
+        if (fromText((await read('text/uri-list')) || (await read('text/plain')), await read('text/html'))) return zone.blur();
+      }
+      toast(seen.length ? `Image non reconnue (contenu : ${seen.join(', ')}). Essaie l’appui long > Coller` : 'Rien à coller : appui long sur l’image du produit, puis « Copier »');
+    } catch { toast('Appui long sur ce bouton, puis « Coller »'); }
   };
   preview.onerror = () => { preview.hidden = true; };
   link.onchange = () => {
@@ -349,7 +374,7 @@ function imagePicker(form, name) {
 // Les images sont réduites (400 px, JPEG ≈ 30 Ko) avant d'être enregistrées.
 const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
   <label class="btn ghost small">${ico('camera')} ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label>
-  ${navigator.clipboard?.read ? '<button type="button" class="btn ghost small" data-paste>📋 Coller</button>' : ''}</div>
+  <div class="btn ghost small paste-zone" data-paste contenteditable="true" inputmode="none" role="button" aria-label="Coller une image (toucher, ou appui long puis Coller)">📋 Coller</div></div>
   <input name="${name}-url" inputmode="url" autocomplete="off" aria-label="Adresse web de l’image" placeholder="ou colle l’adresse d’une image (https://…)">
   <input type="hidden" name="${name}">`;
 
