@@ -1,7 +1,7 @@
 import { api, DEMO, same } from './data.js';
 import { VAPID_PUBLIC_KEY } from './config.js';
 import { parsePrice } from './price.js';
-import { parseShared, isGenericTitle, nameFromUrl } from './link.js';
+import { parseShared, isGenericTitle, nameFromUrl, parseGiftList } from './link.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.28';
+const VERSION = 'v0.29';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -454,10 +454,64 @@ function editProfile(id) {
   if (p.photo) setPhoto(p.photo);
 }
 
+// ───────── Liste de cadeaux collée (préparée par exemple avec Claude) ─────────
+function claudePrompt(p) {
+  const year = new Date().getFullYear();
+  return `Propose-moi une liste de 10 idées de cadeaux de Noël pour ${p.name}${p.birth_year ? `, ${year - p.birth_year} ans` : ''}.
+${p.note ? `Ses envies : ${p.note}\n` : ''}Privilégie des produits disponibles en France (Amazon.fr, Fnac, King Jouet, Cultura…).
+
+Réponds UNIQUEMENT avec la liste, sans titre ni commentaire, une ligne par cadeau, au format exact :
+Nom du cadeau | prix en euros | lien d'achat | lien direct de l'image
+
+Exemple :
+LEGO Creator Le manoir hanté 31167 | 69,99 | https://www.amazon.fr/dp/B0CFW3RT3Q | https://m.media-amazon.com/images/I/81example.jpg
+
+Règles :
+- un « | » entre chaque champ, toujours 4 champs ;
+- si tu n'es pas sûr d'un lien ou d'un prix, laisse le champ vide plutôt que d'inventer (ex. : Livre Astérix | 12,50 | | ) ;
+- liens complets commençant par https://.`;
+}
+
+function giftList(id) {
+  const p = D.profiles.find((p) => p.id === id);
+  $('#sheet').close();
+  let parsed = { gifts: [], errors: [] };
+  const form = sheet(`<h2 tabindex="-1" autofocus>Liste de cadeaux pour ${esc(p.name)}</h2>
+    <ol class="steps">
+      <li>Copie la consigne et colle-la dans Claude (ou une autre IA).</li>
+      <li>Vérifie sa réponse, puis colle-la ci-dessous.</li>
+    </ol>
+    <button type="button" class="btn ghost" data-copy-prompt>📋 Copier la consigne pour Claude</button>
+    <label>Liste (une ligne par cadeau : nom | prix | lien | image)
+      <textarea name="list" rows="7" placeholder="LEGO Creator Le manoir hanté | 69,99 | https://… | https://…"></textarea></label>
+    <p class="fetch-status" aria-live="polite" hidden></p>
+    <div class="row">${cancel}<button class="btn" disabled>Ajouter</button></div>`,
+  async () => {
+    for (const g of parsed.gifts) await api.addGift({ profile_id: id, ...g });
+    await refresh();
+    toast(`${parsed.gifts.length} cadeau${parsed.gifts.length > 1 ? 'x' : ''} ajouté${parsed.gifts.length > 1 ? 's' : ''} pour ${p.name}`);
+  });
+  const status = $('.fetch-status', form), submit = $('.row .btn:not(.ghost)', form);
+  $('[data-copy-prompt]', form).onclick = () => navigator.clipboard.writeText(claudePrompt(p))
+    .then(() => toast('Consigne copiée : colle-la dans Claude'))
+    .catch(() => toast('Copie impossible sur cet appareil'));
+  form.list.addEventListener('input', () => {
+    parsed = parseGiftList(form.list.value, parsePrice);
+    const n = parsed.gifts.length;
+    status.hidden = !form.list.value.trim();
+    status.className = `fetch-status ${n ? 'ok' : 'ko'}`;
+    status.textContent = `${n} cadeau${n > 1 ? 'x' : ''} reconnu${n > 1 ? 's' : ''}`
+      + (parsed.errors.length ? ` · ligne${parsed.errors.length > 1 ? 's' : ''} ignorée${parsed.errors.length > 1 ? 's' : ''} : ${parsed.errors.join(', ')}` : '');
+    submit.disabled = !n;
+    submit.textContent = n ? `Ajouter les ${n} cadeau${n > 1 ? 'x' : ''}` : 'Ajouter';
+  });
+}
+
 function profileMenu(id) {
   const p = D.profiles.find((p) => p.id === id);
   const others = D.families.filter((f) => !D.links.some((l) => l.profile_id === id && l.family_id === f.id));
   sheet(`<h2>${esc(p.name)}</h2>
+    <button type="button" class="btn ghost" data-act="gift-list" data-id="${id}">${ico('idea')} Ajouter une liste de cadeaux</button>
     ${others.map((f) => `<button type="button" class="btn ghost" data-act="add-to-family" data-id="${id}" data-fid="${f.id}">Ajouter aussi à ${esc(f.name)}</button>`).join('')}
     ${same(p.created_by, D.pseudo) || same(p.owner, D.pseudo) ? `<button type="button" class="btn ghost" data-act="edit-profile" data-id="${id}">Modifier le profil</button>` : ''}
     <button type="button" class="btn ghost" data-act="share-list" data-id="${id}">${ico('share')} Partager cette liste</button>
@@ -518,6 +572,7 @@ const actions = {
   filter: (b) => { filter = b.dataset.id; localStorage.setItem('giftmas-filter', filter); render(); },
   'new-profile': () => newProfile(),
   'edit-profile': (b) => editProfile(b.dataset.id),
+  'gift-list': (b) => giftList(b.dataset.id),
   'new-gift': (b) => newGift(b.dataset.id),
   'gift-info': (b) => giftInfo(b),
   'profile-menu': (b) => profileMenu(b.dataset.id),

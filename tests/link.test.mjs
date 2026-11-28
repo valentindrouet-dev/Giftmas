@@ -21,3 +21,24 @@ assert.equal(nameFromUrl('https://www.fnac.com/a17234543/LEGO-Spidey-Le-bateau-p
 assert.equal(nameFromUrl('https://amzn.eu/d/0abcDEF'), '');
 assert.equal(nameFromUrl('pas une url'), '');
 console.log('link OK');
+
+// Liste de cadeaux collée
+import { parseGiftList } from '../link.js';
+import { parsePrice } from '../price.js';
+const list = parseGiftList([
+  '```',
+  'Nom | prix | lien | image',
+  '- LEGO Creator Le manoir hanté | 69,99 € | https://www.amazon.fr/dp/B0CFW3 | https://m.media-amazon.com/images/I/a.jpg',
+  '2. Livre Astérix | 12.50 | | ',
+  'Peluche | | pas-un-lien | http://image-non-securisee.jpg',
+  'phrase sans séparateur',
+  '# titre ignoré',
+  '```',
+].join('\n'), parsePrice);
+assert.deepEqual(list.gifts, [
+  { name: 'LEGO Creator Le manoir hanté', price: 69.99, url: 'https://www.amazon.fr/dp/B0CFW3', image: 'https://m.media-amazon.com/images/I/a.jpg' },
+  { name: 'Livre Astérix', price: 12.5, url: null, image: null },
+  { name: 'Peluche', price: null, url: null, image: null },
+]);
+assert.deepEqual(list.errors, [6], 'la phrase sans séparateur est signalée');
+console.log('liste OK');

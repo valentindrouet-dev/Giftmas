@@ -31,3 +31,25 @@ export function nameFromUrl(url) {
   const words = best.replace(/\.(html?|aspx)$/i, '').split(/[-_]+/).filter(Boolean);
   return words.length >= 2 ? words.join(' ').slice(0, 120) : '';
 }
+
+// Liste de cadeaux collée (une ligne par cadeau) : « Nom | prix | lien d'achat | lien de l'image »
+// Tolère puces, numéros, blocs de code, lignes de titre (#) et champs vides. → { gifts, errors: [numéros de ligne] }
+export function parseGiftList(text, parsePrice) {
+  const gifts = [], errors = [];
+  String(text ?? '').split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim().replace(/^([-*•]|\d+[.)])\s+/, '');
+    if (!line || line.startsWith('#') || line.startsWith('```') || !line.includes('|')) {
+      if (line && !line.startsWith('#') && !line.startsWith('```')) errors.push(i + 1);
+      return;
+    }
+    const [name = '', price = '', url = '', image = ''] = line.split('|').map((s) => s.trim());
+    if (!name || /^nom( du cadeau)?$/i.test(name)) { if (!/^nom/i.test(name)) errors.push(i + 1); return; } // ligne d'en-tête ignorée
+    gifts.push({
+      name: name.slice(0, 120),
+      price: price ? parsePrice(price) : null,
+      url: /^https?:\/\/\S+$/i.test(url) ? url : null,
+      image: /^https:\/\/\S+$/i.test(image) ? image : null,
+    });
+  });
+  return { gifts, errors };
+}

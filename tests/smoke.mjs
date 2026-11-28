@@ -137,6 +137,19 @@ await val.click('#sheet >> text=Enregistrer');
 await val.waitForSelector('.gift[data-name="Livre Astérix"] .price:has-text("13,90")');
 assert.equal(val.url().includes('#/p/'), true, 'l’appui long n’a pas ouvert le lien d’achat');
 
+// Liste de cadeaux collée depuis le menu ⋯ (consigne copiable pour Claude)
+await val.click('[aria-label=Accueil]');
+await val.click('.person:has-text("Mamie Jo")');
+await val.click('[aria-label="Options du profil"]');
+await val.click('#sheet [data-act=gift-list]');
+await val.click('#sheet [data-copy-prompt]');
+assert.ok((await val.evaluate(() => navigator.clipboard.readText())).includes('Mamie Jo'), 'la consigne copiée cite le membre');
+await val.fill('#sheet textarea[name=list]', 'Écharpe en laine | 29,90 | https://www.fnac.com/echarpe | \n- Thé de Noël | 12 | | \nligne invalide');
+await val.waitForSelector('#sheet .fetch-status:has-text("2 cadeaux reconnus")');
+await val.click('#sheet >> text=Ajouter les 2 cadeaux');
+await val.waitForSelector('.gift[data-name="Écharpe en laine"]');
+await val.waitForSelector('.gift[data-name="Thé de Noël"]');
+
 // Tri par prix, puis modification d'un membre depuis Familles (âge, prénom)
 await val.click('[aria-label=Accueil]');
 await val.click('.person:has-text("Richard")');
