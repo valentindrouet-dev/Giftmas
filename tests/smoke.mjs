@@ -76,13 +76,19 @@ await val.fill('#sheet input[name=price]', '199,90');
 // Coller une image copiée : elle est réduite en JPEG avant enregistrement
 await val.evaluate(async () => {
   const c = Object.assign(document.createElement('canvas'), { width: 1200, height: 900 });
-  c.getContext('2d').fillRect(0, 0, 1200, 900);
+  c.getContext('2d').fillRect(300, 0, 900, 900); // bande gauche laissée transparente
   const png = await new Promise((r) => c.toBlob(r, 'image/png'));
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
 });
 await val.click('#sheet [data-paste]');
 await val.waitForFunction(() => document.querySelector('#sheet input[name=image]').value.startsWith('data:image/jpeg'));
 assert.ok((await val.inputValue('#sheet input[name=image]')).length < 60000, 'l’image collée est réduite');
+const corner = await val.evaluate(async () => {
+  const im = new Image(); im.src = document.querySelector('#sheet input[name=image]').value; await im.decode();
+  const c = Object.assign(document.createElement('canvas'), { width: 4, height: 4 }); const x = c.getContext('2d');
+  x.drawImage(im, 0, 0, 4, 4); return [...x.getImageData(0, 0, 1, 1).data];
+});
+assert.ok(corner[0] > 220 && corner[1] > 220 && corner[2] > 220, `zone transparente devenue blanche (vu ${corner})`);
 await val.fill('#sheet input[name=image-url]', 'https://example.com/velo.jpg');
 await val.dispatchEvent('#sheet input[name=image-url]', 'change');
 await val.click('#sheet >> text=Ajouter');

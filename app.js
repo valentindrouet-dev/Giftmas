@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.29';
+const VERSION = 'v0.30';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -310,7 +310,10 @@ async function shrink(file, max = 400) {
   const img = await createImageBitmap(file);
   const k = Math.min(1, max / Math.max(img.width, img.height));
   const c = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) });
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; // le JPEG n'a pas de transparence : fond blanc plutôt que noir
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.75);
 }
 // Champ image : fichier, appareil photo (proposé par iOS), image collée, ou adresse web d'une image.
