@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.24';
+const VERSION = 'v0.25';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -260,6 +260,20 @@ function imagePicker(form, name) {
   const take = async (file) => file?.type.startsWith('image/') && (link.value = '', set(await shrink(file).catch(() => '')));
   input.onchange = () => take(input.files[0]);
   form.addEventListener('paste', (e) => take(e.clipboardData.files[0]));
+  // Bouton « Coller » : image copiée (appui long > Copier) ou adresse d'image. iOS demande une confirmation.
+  $('[data-paste]', form).onclick = async () => {
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) return take(new File([await item.getType(type)], 'image', { type }));
+        if (item.types.includes('text/plain')) {
+          const t = (await (await item.getType('text/plain')).text()).trim();
+          if (/^https:\/\/\S+$/i.test(t)) { link.value = t; return set(t); }
+        }
+      }
+      toast('Pas d’image copiée : appui long sur l’image du produit, puis « Copier »');
+    } catch { toast('Collage impossible : autorise le collage, ou utilise « Photo »'); }
+  };
   preview.onerror = () => { preview.hidden = true; };
   link.onchange = () => {
     const v = link.value.trim();
@@ -268,8 +282,10 @@ function imagePicker(form, name) {
   };
   return (src) => { link.value = /^https:/.test(src) ? src : ''; set(src); };
 }
+// Les images sont réduites (400 px, JPEG ≈ 30 Ko) avant d'être enregistrées.
 const imageField = (name, label) => `<div class="img-pick"><img alt="" hidden>
-  <label class="btn ghost small">${ico('camera')} ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label></div>
+  <label class="btn ghost small">${ico('camera')} ${label}<input type="file" name="${name}-file" accept="image/*" hidden></label>
+  ${navigator.clipboard?.read ? '<button type="button" class="btn ghost small" data-paste>📋 Coller</button>' : ''}</div>
   <input name="${name}-url" inputmode="url" autocomplete="off" aria-label="Adresse web de l’image" placeholder="ou colle l’adresse d’une image (https://…)">
   <input type="hidden" name="${name}">`;
 

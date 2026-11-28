@@ -172,7 +172,7 @@ legend { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .btn.green { background: var(--green); margin-bottom: 12px; }
 .link { background: none; border: 0; padding: 8px; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .row { display: flex; gap: 8px; }
-.img-pick { display: flex; align-items: center; gap: 12px; }
+.img-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .img-pick img { width: 72px; height: 72px; border-radius: 12px; object-fit: cover; }
 .img-pick small { color: var(--muted); }
 

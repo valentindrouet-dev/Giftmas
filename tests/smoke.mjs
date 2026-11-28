@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const URL = 'http://localhost:8123/';
 const shots = process.argv[2];
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+const ctx = await browser.newContext({ ...devices['iPhone 13'], permissions: ['clipboard-read', 'clipboard-write'] });
 // Force le mode démo, quelle que soit la config du repo.
 await ctx.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = ''; export const VAPID_PUBLIC_KEY = '';" }));
 const snap = (page, name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
@@ -72,6 +72,16 @@ await val.click('[aria-label="Ajouter un cadeau"]');
 await val.fill('#sheet input[name=url]', 'fnac.com/velo');
 await val.fill('#sheet input[name=name]', 'Vélo');
 await val.fill('#sheet input[name=price]', '199,90');
+// Coller une image copiée : elle est réduite en JPEG avant enregistrement
+await val.evaluate(async () => {
+  const c = Object.assign(document.createElement('canvas'), { width: 1200, height: 900 });
+  c.getContext('2d').fillRect(0, 0, 1200, 900);
+  const png = await new Promise((r) => c.toBlob(r, 'image/png'));
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+});
+await val.click('#sheet [data-paste]');
+await val.waitForFunction(() => document.querySelector('#sheet input[name=image]').value.startsWith('data:image/jpeg'));
+assert.ok((await val.inputValue('#sheet input[name=image]')).length < 60000, 'l’image collée est réduite');
 await val.fill('#sheet input[name=image-url]', 'https://example.com/velo.jpg');
 await val.dispatchEvent('#sheet input[name=image-url]', 'change');
 await val.click('#sheet >> text=Ajouter');
