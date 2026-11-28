@@ -31,12 +31,12 @@ a { color: inherit; }
 }
 /* en mode app (écran d'accueil), on descend l'en-tête sous la zone floutée par iOS */
 .standalone .top { padding-top: calc(env(safe-area-inset-top) + 18px); }
-.brand { display: flex; align-items: center; gap: 6px; color: #fff; text-decoration: none; font-size: 22px; }
+.brand { display: flex; align-items: center; gap: 5px; min-width: 0; color: #fff; text-decoration: none; font-size: 20px; white-space: nowrap; }
 .brand img { width: 34px; height: 34px; object-fit: contain; }
 .ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
 .version { font: 500 12px system-ui, sans-serif; opacity: .75; }
-.top nav { display: flex; gap: 2px; }
-.top nav a { position: relative; display: grid; place-items: center; width: 44px; height: 44px; text-decoration: none; border-radius: 12px; }
+.top nav { display: flex; gap: 0; flex: none; }
+.top nav a { position: relative; display: grid; place-items: center; width: 42px; height: 44px; text-decoration: none; border-radius: 12px; }
 .top nav .ico { width: 32px; height: 32px; }
 .top nav a[aria-current] { background: rgb(255 255 255 / .22); }
 .badge {
@@ -126,6 +126,21 @@ textarea { width: 100%; padding: 12px; border: 1px solid var(--line); border-rad
 .fetch-status.busy { color: var(--ink); background: #fdf0c8; animation: pulse 1.2s ease-in-out infinite; }
 .fetch-status.ok { color: var(--green); background: #e3f3ea; }
 @keyframes pulse { 50% { opacity: .55; } }
+/* Tutoriel */
+.tuto { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -8px; }
+.tuto::-webkit-scrollbar { display: none; }
+.tuto-step { flex: 0 0 100%; scroll-snap-align: center; display: grid; justify-items: center; align-content: start; gap: 14px;
+  padding: 24px 24px 8px; text-align: center; }
+.tuto-img { width: 120px; height: 120px; object-fit: contain; }
+.tuto-step h2 { font-size: 24px; }
+.tuto-step p { max-width: 340px; font-size: 16px; line-height: 1.5; color: var(--ink); }
+.tuto-step p .ico, .tuto-step p .gift-ico { width: 24px; height: 24px; vertical-align: -6px; }
+.tuto-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 4px; }
+.tuto-nav [data-dir="-1"] { visibility: hidden; }
+.tuto-dots { display: flex; gap: 6px; }
+.tuto-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: .2s; }
+.tuto-dots span.on { width: 22px; border-radius: 4px; background: var(--accent); }
+.tuto-next { min-width: 128px; }
 .price { font: 600 15px Fredoka, system-ui, sans-serif; color: var(--green); }
 .check { display: grid; place-items: center; width: 44px; height: 38px; cursor: pointer; }
 .check input { appearance: none; display: grid; place-items: center; width: 26px; height: 26px; margin: 0; border: 2px solid var(--muted); border-radius: 8px; background: var(--card); }

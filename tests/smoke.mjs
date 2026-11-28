@@ -8,6 +8,7 @@ const URL = 'http://localhost:8123/';
 const shots = process.argv[2];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'], permissions: ['clipboard-read', 'clipboard-write'] });
+await ctx.addInitScript(() => localStorage.setItem('giftmas-tuto', '1')); // tutoriel déjà vu : testé à part
 // Force le mode démo, quelle que soit la config du repo.
 await ctx.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = ''; export const VAPID_PUBLIC_KEY = '';" }));
 const snap = (page, name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
@@ -154,11 +155,22 @@ await val.waitForSelector('.phead small:has-text("9 ans")');
 await val.selectOption('[data-sort]', 'added');
 await snap(val, '6-tri-age');
 
+// Tutoriel : 8 étapes, navigation par boutons, retour à l'accueil à la fin
+await val.click('[aria-label=Tutoriel]');
+await val.waitForSelector('.tuto-step');
+assert.equal((await val.$$('.tuto-step')).length, 8, '8 étapes');
+for (let i = 0; i < 7; i++) { await val.click('.tuto-next'); await val.waitForTimeout(450); }
+assert.equal((await val.textContent('.tuto-next')).trim(), 'C’est parti !', 'dernière étape atteinte');
+await snap(val, '7-tuto-fin');
+await val.click('.tuto-next');
+await val.waitForSelector('.people');
+
 // Sauvegarde : export puis import par quelqu'un d'autre, sur un appareil vierge
 await val.click('[aria-label="Familles et réglages"]');
 const [download] = await Promise.all([val.waitForEvent('download'), val.click('[data-act=export]')]);
 const backup = await download.path();
 const fresh = await browser.newContext({ ...devices['iPhone 13'] });
+await fresh.addInitScript(() => localStorage.setItem('giftmas-tuto', '1'));
 await fresh.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = ''; export const VAPID_PUBLIC_KEY = '';" }));
 const imp = await fresh.newPage();
 imp.on('pageerror', (e) => { throw e; });
@@ -176,6 +188,7 @@ await imp.click('.person:has-text("Richou")');
 await imp.waitForSelector('.gift[data-name="Astérix chez les Pictes"], .gift[data-name="Livre Astérix"]');
 assert.ok((await imp.$$('.gift')).length >= 8, 'les cadeaux de Richou sont restaurés');
 await imp.click('[aria-label="Familles et réglages"]');
+await imp.waitForFunction(() => !document.querySelector('#toast').classList.contains('show')); // le message du 1er import est parti
 imp.once('dialog', (d) => d.accept());
 await imp.setInputFiles('[data-import]', backup);
 await imp.waitForSelector('#toast.show >> text=0 famille(s), 0 membre(s), 0 cadeau(x)');

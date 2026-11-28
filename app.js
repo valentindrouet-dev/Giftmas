@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.25';
+const VERSION = 'v0.26';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -34,6 +34,7 @@ async function start() {
         <a href="#/" aria-label="Accueil">${ico('home')}</a>
         <a href="#/boutiques" aria-label="Boutiques en ligne">${ico('journal')}</a>
         <a href="#/notifs" aria-label="Notifications">${ico('bell')}<b class="badge" hidden></b></a>
+        <a href="#/aide" aria-label="Tutoriel">${ico('help')}</a>
         <a href="#/familles" aria-label="Familles et réglages">${ico('family')}</a>
       </nav>
     </header>
@@ -43,6 +44,8 @@ async function start() {
   api.subscribe(() => { clearTimeout(t); t = setTimeout(refresh, 250); });
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refresh());
   addEventListener('hashchange', render);
+  // première visite sur cet appareil : on ouvre le tutoriel
+  try { if (!localStorage.getItem('giftmas-tuto')) { localStorage.setItem('giftmas-tuto', '1'); location.hash = '#/aide'; } } catch {}
   await refresh();
 }
 
@@ -91,7 +94,7 @@ function login(code = '', create = false) {
 function render() {
   const [, page, id] = location.hash.split('/');
   const unread = D.notifications.filter((n) => !n.read).length;
-  $('#view').innerHTML = page === 'p' ? person(id) : page === 'boutiques' ? shops() : page === 'notifs' ? notifs() : page === 'familles' ? families() : home();
+  $('#view').innerHTML = page === 'p' ? person(id) : page === 'boutiques' ? shops() : page === 'aide' ? tutorial() : page === 'notifs' ? notifs() : page === 'familles' ? families() : home();
   document.querySelectorAll('.top nav a').forEach((a) => a.toggleAttribute('aria-current', a.hash === `#/${page ?? ''}`));
   const badge = $('.badge');
   badge.hidden = !unread;
@@ -170,6 +173,38 @@ function sortGifts(list, taken) {
   }[sort];
   return by ? [...list].sort(by) : list;
 }
+
+// ───────── Tutoriel : une étape par page, qu'on fait défiler de gauche à droite ─────────
+const img = (src) => `<img class="tuto-img" src="assets/${src}.webp" alt="">`;
+const TUTO = [
+  ['hero-gift', 'Bienvenue sur Giftmas', 'Les listes de cadeaux de toute la famille, au même endroit.<br>Chacun voit les idées des autres… et ce qui est déjà réservé.'],
+  ['i-family', 'Les familles', 'Une famille, c’est un groupe avec un code de 6 lettres.<br>Tu ne vois que les membres de tes familles. Tu peux être dans plusieurs : la tienne, ta belle-famille…'],
+  ['i-invite', 'Inviter et rejoindre', `${ico('family')} puis <b>Inviter</b> : envoie le lien par WhatsApp ou Messages, le code est dedans.<br>Pour une autre famille : ${ico('family')} puis <b>Rejoindre</b>, avec son code.`],
+  ['i-plus', 'Ajouter un membre', 'Sur l’accueil, touche <b>＋ Ajouter</b>.<br>Pour toi, coche <b>« C’est moi »</b> : tu ne verras pas ce qu’on t’offre.<br>Pour un enfant, crée son profil : c’est toi qui le gères.'],
+  ['i-idea', 'Ajouter un cadeau', `Sur la fiche d’un membre, touche ${ico('plus')}.<br>Colle le lien du produit : le nom, l’image et le prix se remplissent quand le site le permet. Sinon, <b>📋 Coller</b> une image copiée.`],
+  ['i-check', 'Réserver un cadeau', 'Coche la case d’un cadeau : il est réservé à ton nom pour tout le monde…<br>sauf pour la personne concernée : <b>surprise !</b> Son prix est alors caché aux autres.'],
+  ['i-bell', 'Les petites astuces', `Touche un cadeau : détails et lien d’achat. Appui long : le modifier. ${ico('sort')} : trier.<br>${giftIco('i-idea')} idées disponibles · ${giftIco('hero-gift')} déjà réservées.<br>${ico('bell')} : tu es prévenu quand on réserve sur un profil que tu as créé.`],
+  ['i-home', 'Comme une vraie app', 'Dans Safari : <b>Partager</b> puis <b>Sur l’écran d’accueil</b>.<br>Et de temps en temps : ' + ico('family') + ' puis <b>Exporter</b>, pour garder une sauvegarde.'],
+];
+function tutorial() {
+  return `<div class="tuto" aria-roledescription="carrousel">
+      ${TUTO.map(([pic, title, text], i) => `<section class="tuto-step" aria-label="Étape ${i + 1} sur ${TUTO.length}">
+        ${img(pic)}<h2>${title}</h2><p>${text}</p></section>`).join('')}
+    </div>
+    <div class="tuto-nav">
+      <button type="button" class="icon-btn" data-act="tuto" data-dir="-1" aria-label="Étape précédente">${ico('back')}</button>
+      <div class="tuto-dots">${TUTO.map((_, i) => `<span class="${i ? '' : 'on'}"></span>`).join('')}</div>
+      <button type="button" class="btn small tuto-next" data-act="tuto" data-dir="1">Suivant</button>
+    </div>`;
+}
+// points et bouton suivent le défilement (au doigt ou par les boutons)
+document.addEventListener('scroll', (e) => {
+  if (!e.target.classList?.contains('tuto')) return;
+  const t = e.target, i = Math.round(t.scrollLeft / t.clientWidth), last = i === TUTO.length - 1;
+  document.querySelectorAll('.tuto-dots span').forEach((d, k) => d.classList.toggle('on', k === i));
+  $('.tuto-next').textContent = last ? 'C’est parti !' : 'Suivant';
+  $('.tuto-nav [data-dir="-1"]').style.visibility = i ? 'visible' : 'hidden';
+}, true);
 
 const SHOPS = [
   ['Amazon', 'amazon.fr', 'De tout'], ['Fnac', 'fnac.com', 'Livres, high-tech'], ['Darty', 'darty.com', 'Électroménager'],
@@ -469,6 +504,11 @@ const actions = {
     if (confirm(`Supprimer « ${f.name} » pour tout le monde ?${only.length ? `\n\nSeront aussi supprimés avec leurs listes : ${only.join(', ')}.` : ''}`)) run(() => api.deleteFamily(f.id));
   },
   export: () => exportData().catch((e) => toast(e.message)),
+  tuto: (b) => {
+    const t = $('.tuto'), i = Math.round(t.scrollLeft / t.clientWidth) + Number(b.dataset.dir);
+    if (i >= TUTO.length) location.hash = '#/';
+    else t.scrollTo({ left: i * t.clientWidth, behavior: 'smooth' });
+  },
   'del-notif': (b) => run(() => api.deleteNotif(b.dataset.id)),
   'add-to-family': (b) => ($('#sheet').close(), run(() => api.addProfileToFamily(b.dataset.id, b.dataset.fid))),
   'share-list': (b) => share(`🎁 La liste de cadeaux de ${D.profiles.find((p) => p.id === b.dataset.id).name} sur Giftmas`, `${appUrl}#/p/${b.dataset.id}`),
