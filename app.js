@@ -9,7 +9,7 @@ const euro = (n) => (n == null ? '' : Number(n).toLocaleString('fr-FR', { style:
 const date = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const hue = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const appUrl = location.origin + location.pathname;
-const VERSION = 'v0.26';
+const VERSION = 'v0.27';
 let sort = localStorage.getItem('giftmas-sort') || 'added';
 const ico = (name) => `<img class="ico" src="assets/i-${name}.webp" alt="">`;
 const empty = (img, text) => `<div class="empty"><img src="assets/empty-${img}.webp" alt="">${text}</div>`;
@@ -176,20 +176,46 @@ function sortGifts(list, taken) {
 
 // ───────── Tutoriel : une étape par page, qu'on fait défiler de gauche à droite ─────────
 const img = (src) => `<img class="tuto-img" src="assets/${src}.webp" alt="">`;
-const TUTO = [
-  ['hero-gift', 'Bienvenue sur Giftmas', 'Les listes de cadeaux de toute la famille, au même endroit.<br>Chacun voit les idées des autres… et ce qui est déjà réservé.'],
-  ['i-family', 'Les familles', 'Une famille, c’est un groupe avec un code de 6 lettres.<br>Tu ne vois que les membres de tes familles. Tu peux être dans plusieurs : la tienne, ta belle-famille…'],
-  ['i-invite', 'Inviter et rejoindre', `${ico('family')} puis <b>Inviter</b> : envoie le lien par WhatsApp ou Messages, le code est dedans.<br>Pour une autre famille : ${ico('family')} puis <b>Rejoindre</b>, avec son code.`],
-  ['i-plus', 'Ajouter un membre', 'Sur l’accueil, touche <b>＋ Ajouter</b>.<br>Pour toi, coche <b>« C’est moi »</b> : tu ne verras pas ce qu’on t’offre.<br>Pour un enfant, crée son profil : c’est toi qui le gères.'],
-  ['i-idea', 'Ajouter un cadeau', `Sur la fiche d’un membre, touche ${ico('plus')}.<br>Colle le lien du produit : le nom, l’image et le prix se remplissent quand le site le permet. Sinon, <b>📋 Coller</b> une image copiée.`],
-  ['i-check', 'Réserver un cadeau', 'Coche la case d’un cadeau : il est réservé à ton nom pour tout le monde…<br>sauf pour la personne concernée : <b>surprise !</b> Son prix est alors caché aux autres.'],
-  ['i-bell', 'Les petites astuces', `Touche un cadeau : détails et lien d’achat. Appui long : le modifier. ${ico('sort')} : trier.<br>${giftIco('i-idea')} idées disponibles · ${giftIco('hero-gift')} déjà réservées.<br>${ico('bell')} : tu es prévenu quand on réserve sur un profil que tu as créé.`],
-  ['i-home', 'Comme une vraie app', 'Dans Safari : <b>Partager</b> puis <b>Sur l’écran d’accueil</b>.<br>Et de temps en temps : ' + ico('family') + ' puis <b>Exporter</b>, pour garder une sauvegarde.'],
+const TUTO = [ // [illustration, titre, [[icône, texte], …]] : 3 ou 4 lignes courtes par étape
+  ['hero-gift', 'Bienvenue sur Giftmas', [
+    ['i-family', 'Les <b>listes de cadeaux</b> de toute la famille, au même endroit.'],
+    ['i-idea', 'Chacun ajoute <b>ses idées</b>, ou celles de ses enfants.'],
+    ['hero-gift', 'On voit ce qui est <b>déjà réservé</b> : fini les doublons !']]],
+  ['i-family', 'Les familles', [
+    ['i-invite', 'Une famille, c’est un groupe avec un <b>code de 6 lettres</b>.'],
+    ['i-family', 'Tu ne vois que les membres <b>de tes familles</b>.'],
+    ['i-home', 'Tu peux être dans <b>plusieurs</b> : la tienne, ta belle-famille…']]],
+  ['i-invite', 'Inviter et rejoindre', [
+    ['i-family', 'Tout se passe dans le menu <b>Familles</b>.'],
+    ['i-invite', '<b>Inviter</b> : envoie le lien par WhatsApp ou Messages, le code est dedans.'],
+    ['i-plus', '<b>Rejoindre</b> : entre le code d’une autre famille.']]],
+  ['i-plus', 'Ajouter un membre', [
+    ['i-plus', 'Sur l’accueil, touche <b>＋ Ajouter</b>.'],
+    ['i-help', 'Pour toi : coche <b>« C’est moi »</b>. Tu ne verras pas ce qu’on t’offre.'],
+    ['i-family', 'Pour un enfant : crée son profil, <b>c’est toi qui le gères</b>.']]],
+  ['i-idea', 'Ajouter un cadeau', [
+    ['i-plus', 'Sur la fiche d’un membre, touche <b>＋</b>.'],
+    ['i-link', '<b>Colle le lien</b> du produit : nom, image et prix se remplissent.'],
+    ['i-camera', 'Pas d’image ? <b>Colle</b> une image copiée, ou prends une <b>photo</b>.']]],
+  ['i-check', 'Réserver un cadeau', [
+    ['i-check', '<b>Coche</b> un cadeau : il est réservé à ton nom, pour tout le monde.'],
+    ['hero-gift', 'Sauf pour la personne concernée : <b>surprise !</b>'],
+    ['i-help', 'Son <b>prix</b> est alors caché aux autres.']]],
+  ['i-bell', 'Les petites astuces', [
+    ['i-link', '<b>Touche</b> un cadeau : détails et lien d’achat.'],
+    ['i-more', '<b>Appui long</b> sur un cadeau : le modifier.'],
+    ['i-idea', '<b>Idées</b> encore libres, et <b>cadeaux</b> déjà réservés sous chaque membre.'],
+    ['i-bell', 'La <b>cloche</b> te prévient quand on réserve pour un profil que tu as créé.']]],
+  ['i-home', 'Comme une vraie app', [
+    ['i-share', 'Dans Safari : <b>Partager</b>, puis <b>Sur l’écran d’accueil</b>.'],
+    ['i-home', 'Giftmas s’ouvre alors <b>comme une app</b>.'],
+    ['i-family', 'De temps en temps : Familles › <b>Exporter</b>, pour garder une sauvegarde.']]],
 ];
 function tutorial() {
   return `<div class="tuto" aria-roledescription="carrousel">
-      ${TUTO.map(([pic, title, text], i) => `<section class="tuto-step" aria-label="Étape ${i + 1} sur ${TUTO.length}">
-        ${img(pic)}<h2>${title}</h2><p>${text}</p></section>`).join('')}
+      ${TUTO.map(([pic, title, points], i) => `<section class="tuto-step" aria-label="Étape ${i + 1} sur ${TUTO.length}">
+        ${img(pic)}<h2>${title}</h2>
+        <ul class="tuto-points">${points.map(([icon, text]) => `<li><img src="assets/${icon}.webp" alt=""><span>${text}</span></li>`).join('')}</ul></section>`).join('')}
     </div>
     <div class="tuto-nav">
       <button type="button" class="icon-btn" data-act="tuto" data-dir="-1" aria-label="Étape précédente">${ico('back')}</button>
